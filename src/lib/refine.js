@@ -12,7 +12,7 @@
 // ever improves a clip, it never blocks one.
 
 const path = require("node:path");
-const kie = require("./kie");
+const ai = require("./ai");
 const media = require("./media");
 const { parseTime, MAX_CLIP_SEC } = require("./analyze");
 const { mapLimit } = require("./cuts");
@@ -77,7 +77,7 @@ function parseVerdict(raw, windowSec) {
  * A clip no caption fits is dropped. The pick and the fit replace the writer's own choice and score: the grade comes from the one that saw the clip.
  * Returns { clips, dropped, unverified, nofit }.
  */
-async function refineMoments(picked, { sourceFile, workDir, duration, onProgress, concurrency = 3, makeExcerpt = media.makeExcerpt, upload = kie.uploadFile, chat = kie.chatJSON } = {}) {
+async function refineMoments(picked, { sourceFile, workDir, duration, onProgress, concurrency = 3, makeExcerpt = media.makeExcerpt, upload = ai.uploadFile, chat = ai.chatJSON } = {}) {
   let done = 0;
   const results = await mapLimit(picked, concurrency, async (c, i) => {
     const m = c.moment;
@@ -91,7 +91,7 @@ async function refineMoments(picked, { sourceFile, workDir, duration, onProgress
       await makeExcerpt(sourceFile, a, windowSec, file);
       const url = await upload(file, { uploadPath: "meme-builder/excerpts" });
       const raw = await chat({
-        models: kie.videoModels(),
+        models: ai.videoModels(),
         maxTokens: 500,
         retries: 2,
         messages: [{ role: "user", content: [{ type: "text", text: buildVerifyPrompt(m, windowSec, cands) }, { type: "media", url }] }],

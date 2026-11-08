@@ -4,8 +4,9 @@ const store = require("./lib/store");
 const storage = require("./lib/storage");
 const { regenerateCaption } = require("./lib/captions");
 const { tasteFromRatings } = require("./lib/personas");
-const { KieError, friendlyMessage } = require("./lib/kie");
+const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { rerenderClip } = require("./lib/pipeline");
+const accounts = require("./accounts");
 const { HttpError } = require("./errors");
 
 /** The analysis moment a clip came from (nearest midpoint within 20s), or a minimal stand-in built from the clip itself. Pure. */
@@ -28,7 +29,8 @@ function findMoment(analysis, clip) {
 async function applyCaption(pool, clip, caption) {
   const newUri = await rerenderClip(pool, clip, caption);
   const oldUri = clip.storage_uri;
-  await pool.query("update public.meme_builder_clips set storage_uri = $2 where id = $1", [clip.id, newUri]);
+  const bytes = await storage.sizeOf(newUri).catch(() => 0);
+  await pool.query("update public.meme_builder_clips set storage_uri = $2, bytes = $3 where id = $1", [clip.id, newUri, bytes]);
   const updated = await store.updateClipCaption(pool, clip.id, caption);
   await storage.remove(oldUri).catch(() => {});
   return updated;
@@ -39,13 +41,15 @@ async function regenerate(pool, clip) {
   const job = await store.getJob(pool, clip.job_id);
   const persona = await store.getPersona(pool, clip.persona_id, job && job.owner_id);
   if (!persona) throw new HttpError(409, "That audience no longer exists.", "no_audience");
-  const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job && job.owner_id));
+  const plan = await accounts.planFor(pool, job && job.owner_id);
+  const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job && job.owner_id), { limit: plan.tasteExamples });
   let caption;
   try {
-    caption = await regenerateCaption(persona, findMoment(job && job.analysis, clip), { taste, avoid: [clip.caption] });
+    caption = await ledger.runWithContext({ ownerId: job && job.owner_id, jobId: clip.job_id, stage: "new-caption", tier: plan.models },
+      () => regenerateCaption(persona, findMoment(job && job.analysis, clip), { taste, avoid: [clip.caption] }));
   } catch (e) {
     console.error("[meme-builder] regenerateCaption failed:", e && e.message);
-    throw new HttpError(e instanceof KieError ? 503 : 500, friendlyMessage(e), "caption_failed");
+    throw new HttpError(e instanceof AiError ? 503 : 500, friendlyMessage(e), "caption_failed");
   }
   return applyCaption(pool, clip, caption);
 }
@@ -70,4 +74,16 @@ async function streamClipVideo(req, res, clip, { download = false } = {}) {
   f.stream.pipe(res);
 }
 
-module.exports = { findMoment, applyCaption, regenerate, streamClipVideo };
+/** Delete a finished run: its clips, its video (unless another run uses it), and the rows. A run in progress can't be deleted. */
+async function deleteRun(pool, ownerId, jobId) {
+  const job = await store.getJob(pool, jobId);
+  if (!job || job.owner_id !== ownerId) throw new HttpError(404, "not found", "not_found");
+  if (job.status === "queued" || job.status === "running") throw new HttpError(409, "That run is still going. Wait for it to finish first.", "still_running");
+  const gone = await store.deleteJob(pool, jobId);
+  if (gone) {
+    for (const uri of gone.clipUris) await storage.remove(uri).catch(() => {});
+    if (gone.sourceUri) await storage.remove(gone.sourceUri).catch(() => {});
+  }
+}
+
+module.exports = { findMoment, applyCaption, regenerate, streamClipVideo, deleteRun };

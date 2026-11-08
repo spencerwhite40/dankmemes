@@ -11,7 +11,7 @@
 //   bit:      a longer take. The caption is the HOOK, it frames what the take
 //             is about or what's at stake, without giving away the payoff.
 
-const { chatJSON, textModels } = require("./kie");
+const { chatJSON, textModels } = require("./ai");
 const { personaToPrompt, pickSeeds, SPICE_RULE } = require("./personas");
 
 // Small batches: smaller replies are far more reliable than one huge JSON answer.

@@ -20,24 +20,60 @@ async function api(path, opts = {}) {
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); kids.flat().forEach((k) => e.append(k)); return e; };
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-// ── sign in ──────────────────────────────────────────────────────────────
-function showLogin() { $("login").hidden = false; $("app").hidden = true; $("logout").hidden = true; }
+// ── sign in / create account ─────────────────────────────────────────────
+let mode = "in";
+function setMode(m) {
+  mode = m;
+  $("tab-in").classList.toggle("on", m === "in"); $("tab-up").classList.toggle("on", m === "up");
+  $("name").hidden = m === "in"; $("pw-hint").hidden = m === "in";
+  $("auth-submit").textContent = m === "in" ? "Sign in" : "Create account";
+  $("password").autocomplete = m === "in" ? "current-password" : "new-password";
+  $("login-error").textContent = "";
+}
+$("tab-in").addEventListener("click", () => setMode("in"));
+$("tab-up").addEventListener("click", () => setMode("up"));
+function showLogin(signupsOpen = true) {
+  $("login").hidden = false; $("app").hidden = true; $("logout").hidden = true; $("whoami").textContent = "";
+  $("tab-up").hidden = !signupsOpen; if (!signupsOpen) setMode("in");
+}
 $("login-form").addEventListener("submit", async (e) => {
   e.preventDefault(); $("login-error").textContent = "";
   try {
-    const res = await fetch("/login", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: $("password").value }) });
+    const res = await fetch(mode === "in" ? "/auth/login" : "/auth/signup", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("email").value, password: $("password").value, name: $("name").value }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Couldn't sign in.");
     $("password").value = ""; await start();
   } catch (err) { $("login-error").textContent = err.message; }
 });
-$("logout").addEventListener("click", async () => { await fetch("/logout", { method: "POST" }); location.reload(); });
+$("logout").addEventListener("click", async () => { await fetch("/auth/logout", { method: "POST", credentials: "same-origin" }); location.reload(); });
+
+// ── your plan ───────────────────────────────────────────────────────────────
+const gb = (b) => (b / 1024 ** 3 < 0.1 ? `${Math.round(b / 1024 ** 2)} MB` : `${(b / 1024 ** 3).toFixed(1)} GB`);
+function meter(label, used, limit, text) {
+  const pct = Math.min(100, Math.round((used / limit) * 100));
+  return el("div", { className: "meter" + (pct >= 90 ? " hot" : "") }, el("span", { textContent: `${label}: ${text}` }), el("div", { className: "bar" }, el("span", { style: `width:${pct}%` })));
+}
+async function refreshPlan() {
+  const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => null);
+  if (!me || !me.signedIn) return;
+  const { plan, limits, usage } = me;
+  $("plan-name").textContent = plan.label;
+  $("whoami").textContent = `${me.user.email} · ${plan.label}`;
+  $("meters").replaceChildren(
+    meter("Minutes this month", usage.minutes, limits.monthly_minutes, `${usage.minutes} of ${limits.monthly_minutes}`),
+    meter("Storage", usage.storage_bytes, limits.storage_gb * 1024 ** 3, `${gb(usage.storage_bytes)} of ${limits.storage_gb} GB`),
+    meter("Running now", usage.active_runs, limits.concurrent_runs, `${usage.active_runs} of ${limits.concurrent_runs}`),
+  );
+  $("plan-note").textContent = `Videos up to ${limits.max_video_minutes} minutes and ${limits.max_upload_mb} MB. Runs and clips are kept for ${limits.retention_days} days, then deleted.${limits.api_access ? "" : " API access needs a paid plan."}`;
+  $("keys-intro").textContent = limits.api_access ? "Let another app use your account through the API. A key is shown once, so copy it when it appears. See docs/api.md." : "API keys come with a paid plan.";
+  $("key-form").hidden = !limits.api_access;
+}
 
 // ── load ────────────────────────────────────────────────────────────────
 async function start() {
-  const me = await fetch("/api/me").then((r) => r.json());
-  if (!me.signedIn) return showLogin();
-  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = !me.authEnabled;
+  const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json());
+  if (!me.signedIn) return showLogin(me.signupsOpen !== false);
+  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false; await refreshPlan();
   const [{ personas }, { videos }, { jobs }] = await Promise.all([api("/personas"), api("/videos"), api("/jobs")]);
   $("persona").replaceChildren(...personas.map((p) => el("option", { value: p.id, textContent: p.name })));
   $("previous").replaceChildren(el("option", { value: "", textContent: "None" }), ...videos.map((v) => el("option", { value: v.job_id, textContent: `${v.label}${v.duration ? ` · ${mmss(v.duration)}` : ""} · ${new Date(v.created_at).toLocaleDateString()}` })));
@@ -47,24 +83,29 @@ async function start() {
 }
 
 function renderRecent(jobs) {
-  $("recent").replaceChildren(...(jobs.length ? jobs.slice(0, 10).map((j) => el("li", {}, el("button", { type: "button", onclick: () => open(j.id) },
-    el("span", { textContent: j.source_label }), el("span", { className: "st", textContent: j.status === "done" ? `${j.clip_count} clips` : j.status }))))
+  $("recent").replaceChildren(...(jobs.length ? jobs.slice(0, 10).map((j) => el("li", {},
+    el("button", { type: "button", onclick: () => open(j.id) }, el("span", { textContent: j.source_label }), el("span", { className: "st", textContent: j.status === "done" ? `${j.clip_count} clips` : j.status })),
+    j.status === "queued" || j.status === "running" ? "" : el("button", { type: "button", className: "del", textContent: "delete", title: "Delete this run and free its storage", onclick: async () => {
+      if (!confirm(`Delete "${j.source_label}" and its ${j.clip_count} clips?`)) return;
+      try { await api(`/jobs/${j.id}`, { method: "DELETE" }); if (jobId === j.id) { $("run").hidden = true; $("clips-wrap").hidden = true; jobId = null; } const { jobs: next } = await api("/jobs"); renderRecent(next); refreshPlan(); }
+      catch (err) { $("make-error").textContent = err.message; }
+    } })))
     : [el("li", { className: "muted", textContent: "Nothing yet." })]));
 }
 
-// ── API keys ────────────────────────────────────────────────────────────
+// ── API keys (the signed-in user's own) ───────────────────────────────────
 async function loadKeys() {
   try {
-    const { keys } = await fetch("/admin/keys", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ keys: [] }));
-    $("keys").replaceChildren(...(keys.length ? keys.map((k) => el("li", {}, el("button", { type: "button", disabled: !!k.revoked_at, onclick: async () => { if (!confirm(`Revoke "${k.name}"? Anything using it stops working.`)) return; await fetch(`/admin/keys/${k.id}`, { method: "DELETE", credentials: "same-origin" }); loadKeys(); } },
-      el("span", { textContent: `${k.name} · ${k.owner_id} · ${k.key_prefix}…${k.revoked_at ? " (revoked)" : ""}` }), el("span", { className: "st", textContent: k.revoked_at ? "revoked" : "revoke" }))))
+    const { keys = [] } = await fetch("/account/keys", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ keys: [] }));
+    $("keys").replaceChildren(...(keys.length ? keys.map((k) => el("li", {}, el("button", { type: "button", disabled: !!k.revoked_at, onclick: async () => { if (!confirm(`Revoke "${k.name}"? Anything using it stops working.`)) return; await fetch(`/account/keys/${k.id}`, { method: "DELETE", credentials: "same-origin" }); loadKeys(); } },
+      el("span", { textContent: `${k.name} · ${k.key_prefix}…${k.revoked_at ? " (revoked)" : ""}` }), el("span", { className: "st", textContent: k.revoked_at ? "revoked" : "revoke" }))))
       : [el("li", { className: "muted", textContent: "No keys yet." })]));
   } catch { /* the keys list is optional */ }
 }
 $("key-form").addEventListener("submit", async (e) => {
   e.preventDefault(); $("key-error").textContent = ""; $("key-new").hidden = true;
   try {
-    const res = await fetch("/admin/keys", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: $("key-name").value, ownerId: $("key-owner").value, monthlyMinutesQuota: $("key-quota").value }) });
+    const res = await fetch("/account/keys", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: $("key-name").value }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Couldn't create the key.");
     $("key-new").textContent = `Copy these now. They are not shown again.\n\nAPI key:        ${data.key}\nWebhook secret: ${data.webhook_secret}`; $("key-new").hidden = false;
@@ -88,7 +129,7 @@ $("make").addEventListener("click", async () => {
     }
     $("file").value = "";
     open(res.job.id);
-    api("/jobs").then(({ jobs }) => renderRecent(jobs));
+    api("/jobs").then(({ jobs }) => renderRecent(jobs)); refreshPlan();
   } catch (err) { $("make-error").textContent = err.message; }
   finally { $("make").disabled = false; $("upload-bar").hidden = true; }
 });
@@ -118,7 +159,7 @@ async function poll() {
     if (id !== jobId) return;
     render(job, clips);
     if (job.status === "queued" || job.status === "running") pollTimer = setTimeout(poll, 2500);
-    else { clearInterval(ticker); api("/jobs").then(({ jobs }) => renderRecent(jobs)); }
+    else { clearInterval(ticker); api("/jobs").then(({ jobs }) => renderRecent(jobs)); refreshPlan(); }
   } catch (err) { $("run-status").textContent = err.message; pollTimer = setTimeout(poll, 5000); }
 }
 

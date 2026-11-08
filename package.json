@@ -9,7 +9,9 @@
     "start": "node src/server.js",
     "worker": "node src/run-worker.js",
     "migrate": "node src/migrate.js",
-    "test": "node --test tests/*.test.js"
+    "models:check": "node src/check-models.js",
+    "admin": "node src/admin-cli.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1116.0",

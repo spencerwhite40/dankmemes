@@ -10,7 +10,7 @@ const express = require("express");
 const http = require("node:http");
 const { after, before, describe, test } = require("node:test");
 
-const { extractJSON, friendlyMessage, KieError } = require("../src/lib/kie");
+const { extractJSON, friendlyMessage, AiError } = require("../src/lib/ai");
 const { parseTime, normalizeMoments, wantedMoments, planSpans, fallbackSpans, mergeMoments, analyzeVideo, buildPrompt, ANALYSIS_VERSION } = require("../src/lib/analyze");
 const { selectClips, cleanCaption } = require("../src/lib/captions");
 const { wrapCaption, assText, buildAss } = require("../src/lib/render");
@@ -18,7 +18,7 @@ const { parseProbe, isPrivateIp, assertPublicUrl } = require("../src/lib/media")
 const personas = require("../src/lib/personas");
 const { registerMemeBuilderRoutes, parseOptions, findMoment } = require("../src/routes");
 const { startMemeBuilderWorker, withTimeout } = require("../src/worker");
-const kie = require("../src/lib/kie");
+const ai = require("../src/lib/ai");
 const mbStore = require("../src/lib/store");
 const { encodePreset } = require("../src/lib/render");
 const { writeCaptions, parseCaptionReply } = require("../src/lib/captions");
@@ -35,9 +35,10 @@ describe("kie helpers", () => {
     assert.throws(() => extractJSON("no json here"));
   });
   test("friendlyMessage hides upstream detail from admins", () => {
-    assert.match(friendlyMessage(new KieError("gemini-3-6-flash: HTTP 502 upstream request failed")), /busy or unavailable/);
-    assert.match(friendlyMessage(new KieError("KIE_API_KEY is not set on this server.")), /isn't configured/);
-    assert.match(friendlyMessage(new KieError("upload: no answer after 180s", { retryable: true })), /kieai\.redpandaai\.co/);
+    assert.match(friendlyMessage(new AiError("gemini-3-6-flash: HTTP 502 upstream request failed")), /busy or unavailable/);
+    assert.match(friendlyMessage(new AiError("KIE_API_KEY is not set on this server.", { code: "no_key" })), /isn't set up/);
+    assert.match(friendlyMessage(new AiError("openai: x: out", { code: "out_of_credit" })), /run out of credit/);
+    assert.match(friendlyMessage(new AiError("upload: no answer after 180s", { retryable: true })), /couldn't send your video/);
     assert.equal(friendlyMessage(new Error("plain")), "plain");
   });
 });
@@ -375,7 +376,7 @@ describe("a stalled step cannot hang a run", () => {
     require("node:fs").writeFileSync(tmp, "x");
     const t0 = Date.now();
     try {
-      await assert.rejects(() => kie.uploadFile(tmp, { timeoutMs: 250, attempts: 2 }), (e) => e instanceof kie.KieError && /no answer after/.test(e.message));
+      await assert.rejects(() => ai.uploadFile(tmp, { timeoutMs: 250, attempts: 2 }), (e) => e instanceof ai.AiError && /no answer after/.test(e.message));
       assert.equal(connections, 2, "it retried once after the stall");
       assert.ok(Date.now() - t0 < 5000, "and it did not hang");
     } finally {
@@ -388,7 +389,7 @@ describe("a stalled step cannot hang a run", () => {
     const saved = process.env.KIE_API_KEY; delete process.env.KIE_API_KEY;
     const tmp = require("node:path").join(require("node:os").tmpdir(), `mb-nokey-${process.pid}.bin`); require("node:fs").writeFileSync(tmp, "x");
     const t0 = Date.now();
-    try { await assert.rejects(() => kie.uploadFile(tmp, { attempts: 3 }), /KIE_API_KEY is not set/); assert.ok(Date.now() - t0 < 1000, "no backoff sleeps"); }
+    try { await assert.rejects(() => ai.uploadFile(tmp, { attempts: 3 }), /KIE_API_KEY is not set/); assert.ok(Date.now() - t0 < 1000, "no backoff sleeps"); }
     finally { if (saved !== undefined) process.env.KIE_API_KEY = saved; require("node:fs").rmSync(tmp, { force: true }); }
   });
   test("withTimeout rejects a promise that never settles and passes through one that does", async () => {
@@ -406,7 +407,7 @@ describe("clips are saved one at a time", () => {
     assert.equal(id, "new-id");
     assert.equal(calls.length, 1);
     assert.match(calls[0].sql, /insert into public\.meme_builder_clips/i);
-    assert.deepEqual(calls[0].params, ["job-1", "truckers", 3, "When…", 8, "w", "t", "e", 10, 15, "r2://b/k", "user-1"]);
+    assert.deepEqual(calls[0].params, ["job-1", "truckers", 3, "When…", 8, "w", "t", "e", 10, 15, "r2://b/k", "user-1", 0]);
   });
   test("clearClips deletes the job's rows and hands back their files to remove", async () => {
     const calls = [];
@@ -422,7 +423,7 @@ describe("hardening: one failure must not sink a run", () => {
   const moments = (n) => Array.from({ length: n }, (_, i) => ({ id: `m${i + 1}`, transcript: "t", emotion: "e", delivery: "d", reaction_use: "r", startSec: i * 10, endSec: i * 10 + 5 }));
   // A fake AI: answers every moment id found in the prompt, except on the calls listed in failOn.
   const fakeChat = (failOn = []) => { let call = 0; return async ({ messages }) => {
-    call++; if (failOn.includes(call)) throw new kie.KieError("gemini-3-6-flash: HTTP 502 upstream request failed", { retryable: true });
+    call++; if (failOn.includes(call)) throw new ai.AiError("gemini-3-6-flash: HTTP 502 upstream request failed", { retryable: true });
     return [...messages[0].content.matchAll(/\[(m\d+)\]/g)].map((m) => ({ id: m[1], usable: true, best: `caption ${m[1]}`, score: 7, candidates: [] }));
   }; };
   const quiet = async (fn) => { const e = console.error; console.error = () => {}; try { return await fn(); } finally { console.error = e; } };
@@ -491,69 +492,20 @@ describe("hardening: one failure must not sink a run", () => {
     const part = await quiet(() => writeCaptions(persona, moments(10), { chat: half, stats: stats2 }));
     assert.equal(part.length, 5); assert.deepEqual(stats2, { batches: 2, failed: 1 }, "reported, and the other batch still counts");
   });
-  test("when kie's Claude is down, captions fall back to Anthropic directly (if the app has a key)", async () => {
-    const realFetch = global.fetch; const hits = [];
-    const prevKey = process.env.ANTHROPIC_API_KEY; process.env.ANTHROPIC_API_KEY = "sk-ant-test";
-    kie.resetModelHealth();
-    global.fetch = async (url, init) => {
-      hits.push(String(url));
-      if (String(url).includes("api.kie.ai")) return { status: 500, ok: false, text: async () => "Internal error" };
-      assert.equal(init.headers["x-api-key"], "sk-ant-test");
-      assert.equal(JSON.parse(init.body).model, "claude-sonnet-5-5", "the direct: prefix is not sent to Anthropic");
-      return { status: 200, ok: true, text: async () => JSON.stringify({ content: [{ type: "text", text: "direct answer" }] }) };
-    };
-    try {
-      assert.ok(kie.textModels().includes("direct:claude-sonnet-5-5"));
-      const used = [];
-      const out = await quiet(() => kie.chat({ models: ["claude-sonnet-5-5", "direct:claude-sonnet-5-5"], messages: [{ role: "user", content: "hi" }], retries: 0, onModel: (m) => used.push(m) }));
-      assert.equal(out, "direct answer"); assert.deepEqual(used, ["direct:claude-sonnet-5-5"]);
-      assert.ok(hits.some((u) => u.startsWith("https://api.anthropic.com/v1/messages")));
-    } finally {
-      global.fetch = realFetch; kie.resetModelHealth();
-      if (prevKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = prevKey;
-    }
-  });
-  test("Gemini Pro models use the plain URL, Flash keeps the -openai one, and Pro writes the captions by default", async () => {
-    const realFetch = global.fetch; const urls = [];
-    const prev = process.env.KIE_API_KEY; process.env.KIE_API_KEY = "k"; kie.resetModelHealth();
-    global.fetch = async (url) => { urls.push(String(url)); return { status: 200, ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: "ok" } }] }) }; };
-    try {
-      for (const m of ["gemini-3.1-pro", "gemini-3-pro", "gemini-3-6-flash"]) await kie.chat({ models: [m], messages: [{ role: "user", content: "x" }], retries: 0 });
-      assert.deepEqual(urls, [
-        "https://api.kie.ai/gemini-3.1-pro/v1/chat/completions",
-        "https://api.kie.ai/gemini-3-pro/v1/chat/completions",
-        "https://api.kie.ai/gemini-3-6-flash-openai/v1/chat/completions",
-      ]);
-      assert.equal(kie.textModels()[0], "gemini-3.1-pro");
-      assert.equal(kie.videoModels()[0], "gemini-3-6-flash", "Flash still watches first (fast and reliable)");
-      assert.ok(kie.videoModels().includes("gemini-3.1-pro"), "Pro is a fallback for watching");
-    } finally { global.fetch = realFetch; kie.resetModelHealth(); if (prev === undefined) delete process.env.KIE_API_KEY; else process.env.KIE_API_KEY = prev; }
-  });
-  test("gpt models on kie use their own URL and the <escape> wrapper is stripped", async () => {
-    const realFetch = global.fetch; let seenUrl = "";
-    const prev = process.env.KIE_API_KEY; process.env.KIE_API_KEY = "k"; kie.resetModelHealth();
-    global.fetch = async (url) => { seenUrl = String(url); return { status: 200, ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: "<escape>{\"ok\":true}</escape>" } }] }) }; };
-    try {
-      const out = await kie.chatJSON({ models: ["gpt-5-2"], messages: [{ role: "user", content: "x" }], retries: 0 });
-      assert.deepEqual(out, { ok: true });
-      assert.match(seenUrl, /^https:\/\/api\.kie\.ai\/gpt-5-2\/v1\/chat\/completions$/);
-      assert.ok(kie.textModels().includes("gpt-5-2"), "it is in the default caption chain");
-    } finally { global.fetch = realFetch; kie.resetModelHealth(); if (prev === undefined) delete process.env.KIE_API_KEY; else process.env.KIE_API_KEY = prev; }
-  });
   test("extractJSON salvages the complete items of a reply that was cut off", () => {
     const cut = '[{"id":"m1","best":"one, with a } brace","score":7},{"id":"m2","best":"two","score":6},{"id":"m3","best":"thr';
-    const out = kie.extractJSON(cut);
+    const out = ai.extractJSON(cut);
     assert.deepEqual(out.map((x) => x.id), ["m1", "m2"], "the two complete items survive, the cut one is dropped");
-    assert.deepEqual(kie.extractJSON('```json\n[{"a":1}]\n```'), [{ a: 1 }], "normal replies are untouched");
-    assert.throws(() => kie.extractJSON('[{"id":"m1","best":"thr'), /cut off/, "nothing complete: a clear error, not 'Unexpected end of JSON input'");
-    assert.throws(() => kie.extractJSON("sorry, I can't"), /no JSON/);
+    assert.deepEqual(ai.extractJSON('```json\n[{"a":1}]\n```'), [{ a: 1 }], "normal replies are untouched");
+    assert.throws(() => ai.extractJSON('[{"id":"m1","best":"thr'), /cut off/, "nothing complete: a clear error, not 'Unexpected end of JSON input'");
+    assert.throws(() => ai.extractJSON("sorry, I can't"), /no JSON/);
   });
   test("two unreadable replies in a row become a retryable error, so the run retries itself", async () => {
-    const realFetch = global.fetch; const prev = process.env.KIE_API_KEY; process.env.KIE_API_KEY = "k"; kie.resetModelHealth();
+    const realFetch = global.fetch; const prev = process.env.KIE_API_KEY; process.env.KIE_API_KEY = "k"; ai.resetModelHealth();
     global.fetch = async () => ({ status: 200, ok: true, text: async () => JSON.stringify({ choices: [{ message: { content: '{"a":' } }] }) });
     try {
-      await assert.rejects(() => kie.chatJSON({ models: ["gemini-3-6-flash"], messages: [{ role: "user", content: "x" }], retries: 0 }), (e) => e instanceof kie.KieError && e.retryable === true);
-    } finally { global.fetch = realFetch; kie.resetModelHealth(); if (prev === undefined) delete process.env.KIE_API_KEY; else process.env.KIE_API_KEY = prev; }
+      await assert.rejects(() => ai.chatJSON({ models: ["gemini-3-6-flash"], messages: [{ role: "user", content: "x" }], retries: 0 }), (e) => e instanceof ai.AiError && e.retryable === true);
+    } finally { global.fetch = realFetch; ai.resetModelHealth(); if (prev === undefined) delete process.env.KIE_API_KEY; else process.env.KIE_API_KEY = prev; }
   });
   test("long clips use a faster encode preset", () => {
     assert.equal(encodePreset(10), "veryfast"); assert.equal(encodePreset(40), "superfast"); assert.equal(encodePreset(90), "ultrafast");
@@ -591,7 +543,7 @@ describe("hardening: one failure must not sink a run", () => {
     } };
     return { pool, sql, worker: startMemeBuilderWorker(pool, { log: quietLog, run, retryPauseMs: 5 }) };
   };
-  const transient = () => new kie.KieError("upload: no answer after 180s", { retryable: true });
+  const transient = () => new ai.AiError("upload: no answer after 180s", { retryable: true });
 
   test("worker: a transient AI failure puts the run back in the queue instead of failing it", async () => {
     const { sql, worker } = harness({ id: "j1", attempts: 1 }, async () => { throw transient(); });
@@ -744,7 +696,7 @@ describe("verification: each clip is checked against an excerpt", () => {
     assert.equal(out.dropped, 1);
   });
   test("a failed or unusable check keeps the clip's original times, it never blocks a clip", async () => {
-    const answers = [() => { throw new kie.KieError("502", { retryable: true }); }, () => ({ found: true, start: 9, end: 9.2 })];
+    const answers = [() => { throw new ai.AiError("502", { retryable: true }); }, () => ({ found: true, start: 9, end: 9.2 })];
     let i = 0;
     const out = await quiet(() => refine.refineMoments([mk("a", 100, 110), mk("b", 200, 206)], { ...base, chat: async () => answers[i++ % 2]() }));
     assert.equal(out.clips.length, 2);
@@ -898,7 +850,7 @@ describe("meme-builder routes", () => {
   let server, url, allow = true;
 
   const emptyPool = { query: async () => ({ rows: [], rowCount: 0 }) };
-  const gate = (req, res, next) => (allow ? next() : res.status(403).json({ error: "Missing permission" }));
+  const gate = (req, res, next) => { req.user = { id: "11111111-1111-1111-1111-111111111111", email: "t@example.com" }; return allow ? next() : res.status(403).json({ error: "Missing permission" }); };
 
   before(async () => {
     const app = express();

@@ -89,3 +89,51 @@ create table if not exists usage_events (
   created_at     timestamptz not null default now()
 );
 create index if not exists usage_events_owner_idx on usage_events (owner_id, created_at desc);
+
+-- ── Model usage ledger: every AI call, against the account and run that caused it ─────────────────────────────
+create table if not exists model_usage (
+  id            uuid primary key default gen_random_uuid(),
+  owner_id      text not null,
+  job_id        uuid,
+  stage         text,
+  provider      text not null,
+  model         text not null,
+  kind          text not null default 'text',
+  input_tokens  bigint not null default 0,
+  output_tokens bigint not null default 0,
+  cached_tokens bigint not null default 0,
+  cost_usd      numeric,
+  latency_ms    integer,
+  ok            boolean not null default true,
+  error         text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists model_usage_owner_idx on model_usage (owner_id, created_at desc);
+create index if not exists model_usage_job_idx on model_usage (job_id);
+
+-- ── Accounts, sessions and storage accounting ─────────────────────────────────────────────────────────────────
+create table if not exists users (
+  id            uuid primary key default gen_random_uuid(),
+  email         text not null,
+  password_hash text not null,
+  name          text,
+  plan          text not null default 'free',
+  is_admin      boolean not null default false,
+  created_at    timestamptz not null default now(),
+  last_login_at timestamptz
+);
+create unique index if not exists users_email_lower_idx on users (lower(email));
+
+create table if not exists sessions (
+  token_hash   text primary key,
+  user_id      uuid not null references users(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  expires_at   timestamptz not null,
+  last_seen_at timestamptz not null default now(),
+  user_agent   text
+);
+create index if not exists sessions_user_idx on sessions (user_id);
+
+-- bytes stored per run's source video and per clip, so storage can be limited by plan
+alter table meme_builder_jobs  add column if not exists source_bytes bigint not null default 0;
+alter table meme_builder_clips add column if not exists bytes bigint not null default 0;

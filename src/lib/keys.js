@@ -24,13 +24,14 @@ async function createKey(pool, { ownerId, name, monthlyMinutesQuota = null, rate
   return { key, webhook_secret: webhookSecret, record: publicRow(rows[0]) };
 }
 
-async function listKeys(pool) {
-  const { rows } = await pool.query("select * from api_keys order by created_at desc");
+async function listKeys(pool, ownerId) {
+  const { rows } = await pool.query("select * from api_keys where owner_id = $1 order by created_at desc", [ownerId]);
   return rows.map(publicRow);
 }
 
-async function revokeKey(pool, id) {
-  const r = await pool.query("update api_keys set revoked_at = now() where id = $1 and revoked_at is null", [id]);
+async function revokeKey(pool, id, ownerId) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ""))) return false;
+  const r = await pool.query("update api_keys set revoked_at = now() where id = $1 and owner_id = $2 and revoked_at is null", [id, ownerId]);
   return r.rowCount > 0;
 }
 
@@ -71,7 +72,8 @@ async function monthUsage(pool, ownerId) {
        from usage_events where owner_id = $1 and created_at >= date_trunc('month', now() at time zone 'utc') at time zone 'utc'`,
     [ownerId],
   );
-  return { minutes: Math.round((Number(rows[0].seconds) / 60) * 10) / 10, runs: rows[0].runs, clips: rows[0].clips };
+  const r = rows[0] || { seconds: 0, runs: 0, clips: 0 };
+  return { minutes: Math.round((Number(r.seconds) / 60) * 10) / 10, runs: r.runs, clips: r.clips };
 }
 
 module.exports = { hashKey, newKey, isKeyShaped, createKey, listKeys, revokeKey, findKey, touchKey, getKeyById, recordUsage, monthUsage, publicRow };

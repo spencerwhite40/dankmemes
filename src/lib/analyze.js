@@ -10,7 +10,7 @@
 // builds to a payoff can run a minute. The only hard limit is a loose safety
 // cap so a nonsense answer can't produce an hour-long "clip".
 
-const { chatJSON, videoModels } = require("./kie");
+const { chatJSON, videoModels } = require("./ai");
 
 const MAX_CLIP_SEC = 150;          // sanity cap, not a quality standard
 const KINDS = ["reaction", "bit"];

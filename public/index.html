@@ -9,22 +9,34 @@
 <body>
   <header class="top">
     <h1>Meme Builder</h1>
-    <button id="logout" class="link" hidden>Sign out</button>
+    <div class="who"><span id="whoami" class="muted"></span><button id="logout" class="link" hidden>Sign out</button></div>
   </header>
 
   <main>
-    <!-- Sign in (only shown when a password is set) -->
+    <!-- Sign in / create account -->
     <section id="login" class="card" hidden>
-      <h2>Sign in</h2>
+      <div class="tabs" role="tablist">
+        <button type="button" id="tab-in" class="tab on" role="tab">Sign in</button>
+        <button type="button" id="tab-up" class="tab" role="tab">Create account</button>
+      </div>
       <form id="login-form">
-        <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
-        <button type="submit">Sign in</button>
+        <input id="name" placeholder="Your name (optional)" autocomplete="name" hidden>
+        <input id="email" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" minlength="10" required>
+        <p id="pw-hint" class="muted" hidden>At least 10 characters.</p>
+        <button id="auth-submit" type="submit">Sign in</button>
       </form>
       <p id="login-error" class="error" role="alert"></p>
     </section>
 
     <!-- The whole flow -->
     <div id="app" hidden>
+      <section class="card" id="plan-card">
+        <h2>Your plan: <span id="plan-name"></span></h2>
+        <div id="meters" class="meters"></div>
+        <p id="plan-note" class="muted"></p>
+      </section>
+
       <section class="card">
         <h2>1. Who is it for?</h2>
         <select id="persona" aria-label="Audience"></select>
@@ -55,12 +67,10 @@
 
       <details class="card" id="keys-card">
         <summary><h2 style="display:inline">API keys</h2></summary>
-        <p class="muted">Let another app (or a customer) use this through the API. A key is shown once, so copy it when it appears. See docs/api.md.</p>
+        <p id="keys-intro" class="muted">Let another app use your account through the API. A key is shown once, so copy it when it appears. See docs/api.md.</p>
         <ul id="keys" class="recent"></ul>
         <form id="key-form" class="keyform">
-          <input id="key-name" placeholder="Name (e.g. Haulers)" required>
-          <input id="key-owner" placeholder="Owner id (e.g. haulers)" required pattern="[a-z0-9][a-z0-9_-]{0,39}">
-          <input id="key-quota" type="number" min="0" placeholder="Monthly minutes (optional)">
+          <input id="key-name" placeholder="Name (e.g. My app)" required>
           <button type="submit">Create key</button>
         </form>
         <pre id="key-new" class="note" hidden></pre>

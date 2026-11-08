@@ -23,15 +23,15 @@ const { writeCaptions, selectClips } = require("./captions");
 const { refineMoments } = require("./refine");
 const { snapBounds, dropOverlaps, mapLimit } = require("./cuts");
 const { renderClip } = require("./render");
-const { uploadFile } = require("./kie");
+const { uploadFile, ledger } = require("./ai");
 const { tasteFromRatings } = require("./personas");
 
 // Every captioned moment becomes a clip (best first); the score is a label, not a filter. A minimum score can be set in Options.
 const DEFAULTS = { minScore: 1, maxClips: 30, minClips: 5 };
 
-async function processJob(pool, job, { log = console } = {}) {
+async function processJob(pool, job, { log = console, plan = null } = {}) {
   const workDir = await storage.makeWorkDir(job.id);
-  const stage = (name, info) => store.setStage(pool, job.id, name, info);
+  const stage = (name, info) => { ledger.setStage(name); return store.setStage(pool, job.id, name, info); };
   // Heartbeat the whole time the run is alive, so a slow step (a long AI call, a slow render) is never mistaken for a dead run.
   const heartbeat = setInterval(() => { store.touchJob(pool, job.id).catch(() => {}); }, 30 * 1000);
   if (heartbeat.unref) heartbeat.unref();
@@ -47,8 +47,9 @@ async function processJob(pool, job, { log = console } = {}) {
       }
     } else if (job.source_url) {
       await media.downloadUrl(job.source_url, sourceFile);
+      const bytes = (await fs.promises.stat(sourceFile)).size;
       const uri = await storage.putFile(sourceFile, `${job.id}/source.mp4`, "video/mp4");
-      await store.patchJob(pool, job.id, { source_uri: uri });
+      await store.patchJob(pool, job.id, { source_uri: uri, source_bytes: bytes });
     } else {
       throw new Error("This job has no video source.");
     }
@@ -57,6 +58,9 @@ async function processJob(pool, job, { log = console } = {}) {
     await stage("prepare");
     const meta = job.video_meta || await media.probe(sourceFile);
     if (!job.video_meta) await store.patchJob(pool, job.id, { video_meta: meta });
+    if (plan && meta.duration > plan.maxVideoMinutes * 60) {
+      throw new Error(`This video is ${Math.round(meta.duration / 60)} minutes long. The ${plan.label} plan allows up to ${plan.maxVideoMinutes}.`);
+    }
 
     // upload + analyze (cached across re-captions). An analysis saved by an older version is redone.
     let moments = job.analysis;
@@ -102,7 +106,7 @@ async function processJob(pool, job, { log = console } = {}) {
     await stage("captions", { moments: moments.length });
     const persona = await store.getPersona(pool, job.persona_id, job.owner_id);
     if (!persona) throw new Error(`Audience "${job.persona_id}" no longer exists.`);
-    const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job.owner_id));
+    const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job.owner_id), plan ? { limit: plan.tasteExamples } : undefined);
     const captionModels = new Set();
     const captionStats = {};
     const ranked = await writeCaptions(persona, moments, {
@@ -144,11 +148,12 @@ async function processJob(pool, job, { log = console } = {}) {
       try {
         const cut = snapBounds(c.moment, silences, meta.duration);
         await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
+        const clipBytes = (await fs.promises.stat(out)).size;
         const uri = await storage.putFile(out, `${job.id}/${Date.now()}-${name}`, "video/mp4");
         // Saved the moment it exists: the page shows it (and the Library lists it) while the rest still render.
         // The stored times are the ones actually rendered, so a later caption edit re-renders the identical cut.
         saved += 1;
-        await store.addClip(pool, job.id, persona.id, saved, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: cut.startSec, endSec: cut.endSec, storageUri: uri }, job.created_by);
+        await store.addClip(pool, job.id, persona.id, saved, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: cut.startSec, endSec: cut.endSec, storageUri: uri, bytes: clipBytes }, job.created_by);
       } catch (err) {
         // One bad clip must not cost the other eleven.
         failedClips += 1; lastRenderErr = err;

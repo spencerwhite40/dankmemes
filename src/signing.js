@@ -3,7 +3,7 @@
 const crypto = require("node:crypto");
 
 function secret() {
-  const s = process.env.SESSION_SECRET || process.env.APP_PASSWORD;
+  const s = process.env.SESSION_SECRET;
   if (!s && process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET is required to sign playback links.");
   return s || "dev-secret";
 }

@@ -8,12 +8,13 @@ const store = require("./lib/store");
 const storage = require("./lib/storage");
 const keys = require("./lib/keys");
 const { expandPersona, customPersonaId, isPresetId } = require("./lib/personas");
-const { KieError, friendlyMessage } = require("./lib/kie");
+const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { createRun, rerun } = require("./intake");
-const { regenerate, streamClipVideo } = require("./clips");
+const { regenerate, streamClipVideo, deleteRun } = require("./clips");
 const { signClip, verifyClip } = require("./signing");
 const { createLimiter } = require("./ratelimit");
 const { uploadMiddleware } = require("./upload");
+const accounts = require("./accounts");
 const { asyncRoute } = require("./async-route");
 const { HttpError } = require("./errors");
 
@@ -48,11 +49,14 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     if (!m) return fail(res, 401, "no_key", "Send your API key as: Authorization: Bearer <key>");
     const key = await keys.findKey(pool, m[1]);
     if (!key) return fail(res, 401, "bad_key", "That API key is not valid or has been revoked.");
-    const rate = limiter.check(key.id, key.rate_limit_per_min);
+    const plan = await accounts.planFor(pool, key.owner_id);
+    if (!plan.apiAccess) return fail(res, 403, "api_not_in_plan", `The ${plan.label} plan doesn't include API access.`);
+    const rate = limiter.check(key.id, Math.min(key.rate_limit_per_min, plan.ratePerMin));
     if (!rate.ok) { res.set("Retry-After", String(rate.retryAfterSec)); return fail(res, 429, "rate_limited", "Too many requests. Slow down and retry shortly.", { retry_after_sec: rate.retryAfterSec }); }
     keys.touchKey(pool, key.id);
     req.owner = { ownerId: key.owner_id, apiKeyId: key.id };
     req.apiKey = key;
+    req.plan = plan;
     next();
   }));
 
@@ -101,8 +105,8 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     if (!name || name.length > 80) throw new HttpError(400, "Give the audience a name (80 characters max).", "bad_name");
     if (notes.length < 20 || notes.length > 20000) throw new HttpError(400, "notes must be 20 to 20,000 characters describing the audience.", "bad_notes");
     let persona;
-    try { persona = await expandPersona({ name, notes }); }
-    catch (e) { throw new HttpError(e instanceof KieError ? 503 : 500, friendlyMessage(e), "expand_failed"); }
+    try { persona = await ledger.runWithContext({ ownerId: req.owner.ownerId, stage: "audience", tier: req.plan.models }, () => expandPersona({ name, notes })); }
+    catch (e) { throw new HttpError(e instanceof AiError ? 503 : 500, friendlyMessage(e), "expand_failed"); }
     const id = `${slug(req.owner.ownerId)}-${customPersonaId(name)}`;
     if (isPresetId(id)) throw new HttpError(400, "That name is reserved.", "reserved");
     const { id: _i, preset: _p, created_at: _c, updated_at: _u, ...data } = persona;
@@ -113,7 +117,7 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
   }));
 
   // ── Runs ─────────────────────────────────────────────────────────────────────────────────────────
-  router.post("/runs", uploadMiddleware(), safe(async (req, res) => {
+  router.post("/runs", uploadMiddleware(pool, (req) => req.owner.ownerId), safe(async (req, res) => {
     const tmp = req.file && req.file.path;
     try {
       await checkQuota(req);
@@ -177,11 +181,24 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     res.json({ ok: true });
   }));
 
+  router.delete("/runs/:id", safe(async (req, res) => {
+    if (!UUID_RE.test(req.params.id || "")) throw new HttpError(400, "invalid id", "bad_id");
+    await deleteRun(pool, req.owner.ownerId, req.params.id);
+    res.json({ ok: true });
+  }));
+
   // ── Usage ────────────────────────────────────────────────────────────────────────────────────────
   router.get("/usage", safe(async (req, res) => {
-    const used = await keys.monthUsage(pool, req.owner.ownerId);
-    const quota = req.apiKey.monthly_minutes_quota == null ? null : Number(req.apiKey.monthly_minutes_quota);
-    res.json({ period: "this calendar month (UTC)", minutes_processed: used.minutes, runs: used.runs, clips: used.clips, monthly_minutes_quota: quota, minutes_remaining: quota == null ? null : Math.max(0, Math.round((quota - used.minutes) * 10) / 10) });
+    const snap = await accounts.usageSnapshot(pool, req.owner.ownerId);
+    const keyQuota = req.apiKey.monthly_minutes_quota == null ? null : Number(req.apiKey.monthly_minutes_quota);
+    const cap = keyQuota == null ? snap.limits.monthly_minutes : Math.min(keyQuota, snap.limits.monthly_minutes);
+    const tokens = await ledger.summary(pool, req.owner.ownerId);
+    res.json({
+      period: "this calendar month (UTC)", plan: snap.plan.name, minutes_processed: snap.usage.minutes, runs: snap.usage.runs, clips: snap.usage.clips,
+      monthly_minutes_quota: cap, minutes_remaining: Math.max(0, Math.round((cap - snap.usage.minutes) * 10) / 10),
+      storage_bytes: snap.usage.storage_bytes, storage_limit_bytes: snap.limits.storage_gb * 1024 ** 3, active_runs: snap.usage.active_runs, concurrent_runs_limit: snap.limits.concurrent_runs,
+      models: tokens,
+    });
   }));
 
   router.use((_req, res) => fail(res, 404, "not_found", "No such endpoint."));

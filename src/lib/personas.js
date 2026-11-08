@@ -10,7 +10,7 @@
 // the system prompt the caption writer uses; tasteToPrompt() appends the
 // admin's own thumbs up/down history for that audience.
 
-const { chatJSON } = require("./kie");
+const { chatJSON } = require("./ai");
 
 const PRESETS = [require("./presets/truckers.json")];
 // "Owner-operators" was merged into "Truckers" (most owner-operators drive their own truck). Runs and clips saved under the old id still resolve.
@@ -148,13 +148,13 @@ function personaToPrompt(p, { rotate = false, rng = Math.random } = {}) {
  * Prompt section built from rated clips: rows are { caption, transcript, rating }.
  * Latest rating per caption wins; empty string when nothing is rated yet.
  */
-function tasteFromRatings(rows) {
+function tasteFromRatings(rows, { limit = 15 } = {}) {
   const latest = new Map();
   for (const r of rows || []) latest.set(r.caption, r);
   const all = [...latest.values()];
   const fmt = (r) => `- "${r.caption}"${r.transcript ? `  (clip: "${String(r.transcript).slice(0, 80)}")` : ""}`;
-  const loved = all.filter((r) => r.rating > 0).slice(-15).map(fmt);
-  const hated = all.filter((r) => r.rating < 0).slice(-15).map(fmt);
+  const loved = all.filter((r) => r.rating > 0).slice(-limit).map(fmt);
+  const hated = all.filter((r) => r.rating < 0).slice(-limit).map(fmt);
   if (!loved.length && !hated.length) return "";
   return "\n\nREAL FEEDBACK FROM OUR AUDIENCE\n" +
     (loved.length ? `Captions we LOVED (write more like these: this specificity, this voice):\n${loved.join("\n")}\n` : "") +

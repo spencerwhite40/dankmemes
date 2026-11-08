@@ -6,8 +6,9 @@ Base URL: your deployment, e.g. `https://memes.example.com`. All calls except pl
 Authorization: Bearer mk_live_...
 ```
 
-Create keys on the web page ("API keys") or `POST /admin/keys`. A key belongs to one **owner**; everything a key creates is
-visible only to that owner. A key is shown once when created, along with its **webhook secret**.
+Keys are created by a signed-in user on the web page ("API keys"), on a plan that includes API access. A key acts as its user: everything
+it creates belongs to that account and counts against its plan's limits, and nobody else can see it. A key is shown once when created,
+along with its **webhook secret**. A key stops working if its account moves to a plan without API access.
 
 Errors are JSON: `{ "error": "message", "code": "machine_code" }`. Common codes: `no_key`/`bad_key` (401), `quota_exceeded` (402),
 `not_found` (404, also for other customers' ids), `rate_limited` (429, with `Retry-After`).
@@ -72,5 +73,7 @@ Delivery is retried a few times, but not stored: always be able to fall back to 
 
 ## Limits
 
-Each key has a request rate limit (default 120 per minute) and an optional monthly quota of source-video minutes. Hitting the quota
-returns `402 quota_exceeded` on new runs; runs already started finish.
+Limits come from the account's plan (monthly minutes, longest video, upload size, storage, runs at once, clips per run, request rate).
+When one is hit the call fails with a clear message and a code: `quota_exceeded` (402), `too_many_runs` (429), `file_too_large` or
+`video_too_long` or `storage_full` (413), `rate_limited` (429). A key can also be given its own, lower monthly minutes quota.
+`DELETE /v1/runs/:id` deletes a finished run and frees its storage.

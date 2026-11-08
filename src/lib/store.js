@@ -63,12 +63,12 @@ async function ratedClips(pool, personaId, ownerId = "default") {
 async function createJob(pool, j) {
   const { rows } = await pool.query(
     `insert into public.meme_builder_jobs
-       (id, created_by, persona_id, source_kind, source_label, source_url, source_uri, parent_job_id, options, analysis, video_meta, owner_id, api_key_id)
-     values (coalesce($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12, $13)
+       (id, created_by, persona_id, source_kind, source_label, source_url, source_uri, parent_job_id, options, analysis, video_meta, owner_id, api_key_id, source_bytes)
+     values (coalesce($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12, $13, $14)
      returning *`,
     [j.id || null, j.userId || null, j.personaId, j.sourceKind, j.sourceLabel, j.sourceUrl || null, j.sourceUri || null,
       j.parentJobId || null, JSON.stringify(j.options || {}), j.analysis ? JSON.stringify(j.analysis) : null, j.videoMeta ? JSON.stringify(j.videoMeta) : null,
-      j.ownerId || "default", j.apiKeyId || null],
+      j.ownerId || "default", j.apiKeyId || null, j.sourceBytes || 0],
   );
   return rows[0];
 }
@@ -92,12 +92,13 @@ async function setStage(pool, id, stage, info) {
 }
 
 async function patchJob(pool, id, fields) {
-  const cols = { source_uri: "source_uri", analysis: "analysis", video_meta: "video_meta" };
+  const cols = { source_uri: "source_uri", source_bytes: "source_bytes", analysis: "analysis", video_meta: "video_meta" };
+  const plain = new Set(["source_uri", "source_bytes"]);
   const sets = [], vals = [id];
   for (const [k, v] of Object.entries(fields)) {
     if (!cols[k]) throw new Error(`patchJob: unknown field ${k}`);
-    vals.push(k === "source_uri" ? v : JSON.stringify(v));
-    sets.push(`${cols[k]} = $${vals.length}${k === "source_uri" ? "" : "::jsonb"}`);
+    vals.push(plain.has(k) ? v : JSON.stringify(v));
+    sets.push(`${cols[k]} = $${vals.length}${plain.has(k) ? "" : "::jsonb"}`);
   }
   if (sets.length) await pool.query(`update public.meme_builder_jobs set ${sets.join(", ")} where id = $1`, vals);
 }
@@ -195,9 +196,9 @@ async function clearClips(pool, jobId) {
 /** Save one finished clip right away, so it shows up on the page and in the Library as soon as it exists. */
 async function addClip(pool, jobId, personaId, n, c, userId) {
   const { rows } = await pool.query(
-    `insert into public.meme_builder_clips (job_id, persona_id, n, caption, score, why, transcript, emotion, start_sec, end_sec, storage_uri, created_by)
-     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning id`,
-    [jobId, personaId, n, c.caption, c.score ?? null, c.why || null, c.transcript || null, c.emotion || null, c.startSec, c.endSec, c.storageUri, userId || null],
+    `insert into public.meme_builder_clips (job_id, persona_id, n, caption, score, why, transcript, emotion, start_sec, end_sec, storage_uri, created_by, bytes)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning id`,
+    [jobId, personaId, n, c.caption, c.score ?? null, c.why || null, c.transcript || null, c.emotion || null, c.startSec, c.endSec, c.storageUri, userId || null, c.bytes || 0],
   );
   return rows[0] ? rows[0].id : null;
 }

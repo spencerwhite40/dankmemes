@@ -20,7 +20,8 @@
 
 const store = require("./lib/store");
 const { processJob } = require("./lib/pipeline");
-const { friendlyMessage, KieError } = require("./lib/kie");
+const { friendlyMessage, AiError, ledger } = require("./lib/ai");
+const accounts = require("./accounts");
 
 const STEP_LABELS = {
   fetch: "getting the video", prepare: "preparing it", upload: "uploading it", analyze: "watching it", analyzed: "writing captions",
@@ -66,14 +67,15 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
         if (!job) return;
         log.log(`[meme-builder] job ${job.id} started (attempt ${job.attempts})`);
         try {
-          await withTimeout(run(pool, job, { log }), MAX_JOB_MS);
+          const plan = await accounts.planFor(pool, job.owner_id);
+          await withTimeout(ledger.runWithContext({ ownerId: job.owner_id, jobId: job.id, stage: "starting", tier: plan.models }, () => run(pool, job, { log, plan })), MAX_JOB_MS);
           log.log(`[meme-builder] job ${job.id} done`);
           await afterRun(pool, job.id, { log });
         } catch (err) {
           log.error(`[meme-builder] job ${job.id} failed:`, err && err.message);
           // The AI service is flaky: a transient failure (5xx, overload, stall) puts the run back in the queue
           // on its own instead of making someone press Retry. Anything else, or too many tries, fails it plainly.
-          const transient = err instanceof KieError && err.retryable;
+          const transient = err instanceof AiError && err.retryable;
           if (transient && job.attempts < MAX_AUTO_ATTEMPTS && await store.requeueForRetry(pool, job.id).catch(() => false)) {
             log.log(`[meme-builder] job ${job.id} will retry on its own (attempt ${job.attempts} of ${MAX_AUTO_ATTEMPTS})`);
             await new Promise((r) => setTimeout(r, retryPauseMs));

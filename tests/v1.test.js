@@ -10,6 +10,7 @@ const http = require("node:http");
 const express = require("express");
 
 const keys = require("../src/lib/keys");
+const accounts = require("../src/accounts");
 const { signClip, verifyClip } = require("../src/signing");
 const { createLimiter } = require("../src/ratelimit");
 const webhooks = require("../src/webhooks");
@@ -61,6 +62,9 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
   const { buildV1 } = require("../src/v1");
   const { afterRun } = require("../src/hooks");
   let pool, server, base, tmp, A, B;
+  const U = {};   // owner label -> real user id
+  const mkUser = async (label, plan = "creator") => { const u = await accounts.signup(pool, { email: `${label}-${crypto.randomUUID().slice(0, 6)}@example.com`, password: "a-long-enough-password" }); await accounts.setPlan(pool, u.id, plan); U[label] = u.id; return u; };
+  const settle = () => pool.query("update meme_builder_jobs set status = 'done' where status in ('queued', 'running')");
   const call = async (method, p, { key, body, headers } = {}) => {
     const res = await fetch(base + p, { method, headers: { ...(key ? { Authorization: `Bearer ${key}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}), ...(headers || {}) }, body: body ? JSON.stringify(body) : undefined });
     const text = await res.text(); let json = null; try { json = JSON.parse(text); } catch { /* not json */ }
@@ -72,23 +76,25 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mb-v1-")); process.env.MEME_BUILDER_STORAGE_ROOT = tmp;
     pool = new Pool({ connectionString: DB, ssl: /\/tmp\/|localhost|127\.0\.0\.1/.test(DB) ? false : { rejectUnauthorized: false } });
     await migrate(pool);
-    await pool.query("truncate usage_events, api_keys, meme_builder_clips, meme_builder_jobs, meme_builder_personas cascade");
+    await pool.query("truncate usage_events, model_usage, api_keys, sessions, users, meme_builder_clips, meme_builder_jobs, meme_builder_personas cascade");
     const app = express(); app.use(express.json());
     app.use("/v1", buildV1(pool, { baseUrl: "" }));
     app.use((err, _req, res, _next) => res.status(err.status || 500).json({ error: err.message }));
     await new Promise((r) => { server = http.createServer(app).listen(0, r); });
     base = `http://127.0.0.1:${server.address().port}`;
-    A = await keys.createKey(pool, { ownerId: "acme", name: "A" });
-    B = await keys.createKey(pool, { ownerId: "globex", name: "B" });
+    await mkUser("acme"); await mkUser("globex");
+    A = await keys.createKey(pool, { ownerId: U.acme, name: "A" });
+    B = await keys.createKey(pool, { ownerId: U.globex, name: "B" });
   });
   after(async () => { server && server.close(); await pool.end(); fs.rmSync(tmp, { recursive: true, force: true }); });
 
   test("no key, a bad key and a revoked key are all refused", async () => {
     assert.equal((await call("GET", "/v1/runs")).status, 401);
     assert.equal((await call("GET", "/v1/runs", { key: "mk_live_" + "x".repeat(30) })).status, 401);
-    const extra = await keys.createKey(pool, { ownerId: "acme", name: "temp" });
+    const extra = await keys.createKey(pool, { ownerId: U.acme, name: "temp" });
     assert.equal((await call("GET", "/v1/runs", { key: extra.key })).status, 200);
-    await keys.revokeKey(pool, extra.record.id);
+    assert.equal(await keys.revokeKey(pool, extra.record.id, U.globex), false, "another account cannot revoke it");
+    await keys.revokeKey(pool, extra.record.id, U.acme);
     const after = await call("GET", "/v1/runs", { key: extra.key });
     assert.equal(after.status, 401); assert.equal(after.json.code, "bad_key");
   });
@@ -107,6 +113,7 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
   });
 
   test("customers are isolated: runs, clips, audiences, ratings and the web page's lists", async () => {
+    await settle();
     const run = (await call("POST", "/v1/runs", { key: A.key, body: { audience: "truckers", source_url: "https://8.8.8.8/iso.mp4" } })).json.run;
     const src = path.join(tmp, "c.mp4"); fs.writeFileSync(src, Buffer.alloc(5000, 7));
     const uri = await storage.putFile(src, `${run.id}/c.mp4`, "video/mp4");
@@ -123,27 +130,28 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
     assert.ok(!JSON.stringify((await call("GET", "/v1/videos", { key: B.key })).json).includes("iso.mp4"));
     assert.equal((await call("GET", `/v1/clips/${clip.id}`, { key: A.key })).status, 200, "and A's clip is still there");
     // the web page's lists (owner "default") never include API customers
-    assert.ok(!(await store.listJobs(pool)).some((j) => j.id === run.id));
-    assert.ok(!(await store.listLibrary(pool)).some((c) => c.id === clip.id));
+    assert.ok(!(await store.listJobs(pool, { ownerId: U.globex })).some((j) => j.id === run.id));
+    assert.ok(!(await store.listLibrary(pool, { ownerId: U.globex })).some((c) => c.id === clip.id));
     // ratings from A never shape B's captions
     await call("POST", `/v1/clips/${clip.id}/rating`, { key: A.key, body: { rating: 1 } });
-    assert.equal((await store.ratedClips(pool, "truckers", "acme")).length, 1);
-    assert.equal((await store.ratedClips(pool, "truckers", "globex")).length, 0);
+    assert.equal((await store.ratedClips(pool, "truckers", U["acme"])).length, 1);
+    assert.equal((await store.ratedClips(pool, "truckers", U["globex"])).length, 0);
     assert.equal((await store.ratedClips(pool, "truckers", "default")).length, 0);
   });
 
   test("custom audiences are private, and one customer can't overwrite another's", async () => {
-    await store.savePersona(pool, { id: "acme-nurses", name: "Nurses", data: { name: "Nurses", summary: "We are nurses." }, ownerId: "acme" });
+    await store.savePersona(pool, { id: "acme-nurses", name: "Nurses", data: { name: "Nurses", summary: "We are nurses." }, ownerId: U.acme });
     const a = (await call("GET", "/v1/audiences", { key: A.key })).json.audiences.map((x) => x.id);
     const b = (await call("GET", "/v1/audiences", { key: B.key })).json.audiences.map((x) => x.id);
     assert.ok(a.includes("acme-nurses") && a.includes("truckers"));
     assert.ok(!b.includes("acme-nurses") && b.includes("truckers"), "B sees the built-in audience but not A's");
     assert.equal((await call("POST", "/v1/runs", { key: B.key, body: { audience: "acme-nurses", source_url: "https://8.8.8.8/x.mp4" } })).json.code, "bad_audience");
-    await assert.rejects(() => store.savePersona(pool, { id: "acme-nurses", name: "Hijack", data: { name: "Hijack", summary: "x" }, ownerId: "globex" }), /already exists/);
-    assert.equal((await store.getPersona(pool, "acme-nurses", "acme")).name, "Nurses", "unchanged");
+    await assert.rejects(() => store.savePersona(pool, { id: "acme-nurses", name: "Hijack", data: { name: "Hijack", summary: "x" }, ownerId: U["globex"] }), /already exists/);
+    assert.equal((await store.getPersona(pool, "acme-nurses", U.acme)).name, "Nurses", "unchanged");
   });
 
   test("playback links stream the clip with Range support; a tampered or expired link is refused", async () => {
+    await settle();
     const run = (await call("POST", "/v1/runs", { key: A.key, body: { audience: "truckers", source_url: "https://8.8.8.8/play.mp4" } })).json.run;
     const src = path.join(tmp, "p.mp4"); fs.writeFileSync(src, Buffer.from("0123456789".repeat(100)));
     const uri = await storage.putFile(src, `${run.id}/p.mp4`, "video/mp4");
@@ -160,14 +168,16 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
   });
 
   test("monthly quota, usage, and the rate limit", async () => {
-    const q = await keys.createKey(pool, { ownerId: "quota-co", name: "Q", monthlyMinutesQuota: 1 });
+    await mkUser("quota-co");
+    const q = await keys.createKey(pool, { ownerId: U["quota-co"], name: "Q", monthlyMinutesQuota: 1 });
     assert.equal((await call("GET", "/v1/usage", { key: q.key })).json.minutes_remaining, 1);
-    await pool.query("insert into usage_events (owner_id, source_seconds, clips) values ('quota-co', 120, 5)");
+    await pool.query("insert into usage_events (owner_id, source_seconds, clips) values ($1, 120, 5)", [U["quota-co"]]);
     const usage = (await call("GET", "/v1/usage", { key: q.key })).json;
     assert.equal(usage.minutes_processed, 2); assert.equal(usage.minutes_remaining, 0); assert.equal(usage.clips, 5);
     const blocked = await call("POST", "/v1/runs", { key: q.key, body: { audience: "truckers", source_url: "https://8.8.8.8/q.mp4" } });
     assert.equal(blocked.status, 402); assert.equal(blocked.json.code, "quota_exceeded");
-    const slow = await keys.createKey(pool, { ownerId: "slow-co", name: "S", rateLimitPerMin: 3 });
+    await mkUser("slow-co");
+    const slow = await keys.createKey(pool, { ownerId: U["slow-co"], name: "S", rateLimitPerMin: 3 });
     for (let i = 0; i < 3; i++) assert.equal((await call("GET", "/v1/runs", { key: slow.key })).status, 200);
     const limited = await call("GET", "/v1/runs", { key: slow.key });
     assert.equal(limited.status, 429); assert.ok(Number(limited.headers.get("retry-after")) >= 1);
@@ -177,18 +187,19 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
     const hits = [];
     const hook = http.createServer((req, res) => { let b = ""; req.on("data", (d) => { b += d; }); req.on("end", () => { hits.push({ sig: req.headers["x-meme-signature"], body: b }); res.end("ok"); }); });
     await new Promise((r) => hook.listen(0, r));
-    const k = await keys.createKey(pool, { ownerId: "hooked", name: "H" });
+    await mkUser("hooked");
+    const k = await keys.createKey(pool, { ownerId: U["hooked"], name: "H" });
     // the webhook target is a loopback server, which a real request would refuse, so deliver with the SSRF check stubbed out
     const media = require("../src/lib/media"); const real = media.assertPublicUrl; media.assertPublicUrl = async () => {};
     try {
-      const job = await store.createJob(pool, { ownerId: "hooked", apiKeyId: k.record.id, personaId: "truckers", sourceKind: "url", sourceLabel: "h.mp4", sourceUrl: "https://8.8.8.8/h.mp4", options: { webhookUrl: `http://127.0.0.1:${hook.address().port}/hook` }, videoMeta: { duration: 300 } });
+      const job = await store.createJob(pool, { ownerId: U["hooked"], apiKeyId: k.record.id, personaId: "truckers", sourceKind: "url", sourceLabel: "h.mp4", sourceUrl: "https://8.8.8.8/h.mp4", options: { webhookUrl: `http://127.0.0.1:${hook.address().port}/hook` }, videoMeta: { duration: 300 } });
       await store.claimNextJob(pool); await store.finishJob(pool, job.id);
       await afterRun(pool, job.id, { log: { error() {} } });
       await new Promise((r) => setTimeout(r, 400));
       assert.equal(hits.length, 1);
       assert.equal(hits[0].sig, webhooks.sign(k.webhook_secret, hits[0].body), "signed with the key's webhook secret");
       assert.equal(JSON.parse(hits[0].body).run.id, job.id);
-      const used = await keys.monthUsage(pool, "hooked");
+      const used = await keys.monthUsage(pool, U["hooked"]);
       assert.equal(used.minutes, 5); assert.equal(used.runs, 1);
     } finally { media.assertPublicUrl = real; hook.close(); }
   });

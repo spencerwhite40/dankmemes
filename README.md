@@ -19,7 +19,7 @@ each pairing against the actual clip, and renders 9:16 clips with the caption bu
 ## Run it
 
 ```bash
-cp .env.example .env     # fill in DATABASE_URL, KIE_API_KEY, APP_PASSWORD, SESSION_SECRET (and R2 for real use)
+cp .env.example .env     # fill in DATABASE_URL, GOOGLE_API_KEY (and ANTHROPIC/OPENAI keys), ADMIN_EMAILS (and R2 for real use)
 npm install
 npm run migrate          # tables are also created on boot
 npm start                # http://localhost:3000
@@ -36,6 +36,13 @@ Everything heavy (shrinking video, rendering) happens in the runner. By default 
 - Run `npm run worker` on the faster machine (see `fly.toml` / `Dockerfile`), with the same `DATABASE_URL`, R2 and
   model keys. Jobs are claimed from Postgres with `FOR UPDATE SKIP LOCKED`, so any number of workers can run at once.
 
+## Accounts and plans
+
+People sign up with an email and password; everything they make belongs to their account. A plan (free, creator, pro, agency) sets
+their limits: monthly minutes, video length, upload size, storage, how long runs are kept, runs at once, API access, how much of their own
+rating history teaches their captions, and which AI models they get. See [docs/accounts.md](docs/accounts.md). Every AI call is metered
+per account ([docs/ai-providers.md](docs/ai-providers.md)).
+
 ## API
 
 A versioned public API (API keys, per-customer isolation, usage, expiring playback links, webhooks) is documented in
@@ -49,11 +56,15 @@ src/server.js      web app (API + page) and, unless disabled, the runner
 src/routes.js      the API
 src/worker.js      the job runner (claims queued jobs, retries, watchdog)
 src/run-worker.js  runner only, for a separate machine
-src/auth.js        one shared password (APP_PASSWORD) and a signed cookie
+src/accounts.js    users, passwords, sessions, plan limits
+src/plans.js       what each plan allows (edit limits here)
+src/auth.js        sign-up / sign-in routes and the session cookie
+src/retention.js   deletes runs past their plan's retention
 src/v1.js          the public API (API-key auth)
 src/intake.js      starting a run (shared by the page and the API)
 src/webhooks.js    signed run-finished callbacks
-src/lib/           the pipeline: analyze, captions, refine, cuts, render, media, storage, store, personas, kie (model client)
+src/lib/           the pipeline: analyze, captions, refine, cuts, render, media, storage, store, personas
+src/lib/ai/        model providers (Google, Anthropic, OpenAI, kie.ai), the fallback chain, and the usage ledger
 src/lib/presets/   built-in audiences (truckers: profile + situation bank)
 schema.sql         database tables
 assets/fonts/      the caption font (Liberation Sans Bold, SIL OFL)
@@ -62,5 +73,5 @@ docs/              how it works in detail
 
 ## Status
 
-Extracted from the Haulers app. Next: direct provider keys behind the model client (replacing kie.ai), a usage/cost
-ledger, parallel rendering, and the Fly worker.
+Extracted from the Haulers app. Done since: public API, direct AI providers with a usage ledger, accounts and plans.
+Next: billing (a checkout that sets the plan), password-reset email, parallel rendering, the Fly worker.
