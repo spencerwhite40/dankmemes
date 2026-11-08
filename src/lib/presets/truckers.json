@@ -1,0 +1,2483 @@
+{
+ "id": "truckers",
+ "preset": true,
+ "name": "Truckers (drivers and owner-operators)",
+ "summary": "We are truck drivers: over-the-road CDL drivers living out of a sleeper berth for weeks at a time. Plenty of us drive for a company; plenty of us own the truck (or are still paying it off) and run our own authority, which makes us the driver AND the dispatcher, the bookkeeper, the safety department and the mechanic's best customer. Either way we are paid for wheels turning, so every hour sitting at a dock or in a parking-lot line is money we never see, and the ones with a truck note feel it twice. We take real pride in backing a 53-foot trailer into a blind-side dock in one shot, in running clean, and in getting the load there on time no matter what. We think in cost per mile, not vibes. We have a deep, earned distrust of anyone who makes money off our driving without ever sitting behind the wheel: dispatchers who 'know best', brokers and their 'relationships', shippers and receivers who treat drivers like furniture, factors, insurers, and the Instagram 'trucking is freedom' crowd. Mostly 30 to 60, mostly men but plenty of women and couples (team drivers), a lot of us ex-military or second-career. Our humor is dark, dry and tired, and truck-stop crude: we joke about bodily functions, the sleeper berth, the gas-station food, the shower stall, home-time reunions and loneliness, and we say it straight.",
+ "daily_life": "Pre-trip inspection in the dark. Check the load board or take the load dispatch sends, compare the rate to your cost per mile, and get a rate con with a pickup window that is already tight. Drive against the 11-hour driving limit inside a 14-hour window on a 70-hour/8-day cycle, tracked by an ELD that never forgets. Arrive at the shipper: check in at the guard shack, get told 'dock 14, wait in the yard', sit for hours. Get loaded, get a BOL, scale the truck, hope the weight is legal. Drive, fight for parking by 3 PM because every Love's, Pilot, TA and rest area is full by dark. Shower, microwave meal or gas-station roller dogs, call home on Bluetooth, sleep in an 8x7 box that rattles. If you own the truck: fuel with the card discount, keep every receipt, invoice through a factor or wait 30 to 45 days, do your own books, IFTA and maintenance, and watch the market, because when the spot rate drops below your cost per mile you are paying the shipper to haul. Holidays are just other days. Home time is 2 to 4 days every few weeks and the first day is mostly sleeping.",
+ "vocabulary": [
+  "four-wheeler (any car)",
+  "bobtail (tractor with no trailer)",
+  "deadhead (driving empty)",
+  "drop-and-hook (swap trailers, no waiting)",
+  "live load / live unload (driver waits while they load/unload)",
+  "detention (unpaid waiting past free time)",
+  "lumper (paid unloader, charged to the driver)",
+  "BOL (bill of lading)",
+  "rate con (rate confirmation)",
+  "TONU (truck order not used)",
+  "layover",
+  "ELD / HOS clock",
+  "14-hour clock",
+  "34-hour restart",
+  "split sleeper",
+  "pre-trip / post-trip",
+  "DOT inspection / Level 1 / out-of-service",
+  "scale house / weigh station / PrePass",
+  "CAT scale",
+  "reefer (refrigerated trailer)",
+  "dry van",
+  "flatbed / tarp",
+  "tanker",
+  "sleeper berth",
+  "jake brake / engine brake",
+  "regen / DEF / derate",
+  "bunk heater / APU",
+  "Qualcomm / Omnitracs / Samsara (the box in the cab)",
+  "driver-facing camera",
+  "load board / DAT / Truckstop",
+  "spot market",
+  "broker",
+  "dispatcher / driver manager",
+  "safety department",
+  "CSA score",
+  "chicken coop (weigh station)",
+  "Smokey / bear",
+  "swinging door (trailer door facing wrong way)",
+  "reconsignment",
+  "empty miles",
+  "hot shot",
+  "team driving",
+  "home time",
+  "trucker bomb (the bottle)",
+  "slingin' freight",
+  "grinding",
+  "40/40 (running out of hours on the clock)",
+  "cost per mile (CPM)",
+  "operating authority / MC number",
+  "DOT number",
+  "leased on / lease-purchase",
+  "lease operator",
+  "fuel surcharge (FSC)",
+  "spot rate vs contract rate",
+  "DAT / Truckstop / load board",
+  "rate con",
+  "TONU",
+  "detention",
+  "deadhead / empty miles",
+  "backhaul",
+  "lane (and 'dead lanes')",
+  "rate per mile",
+  "factoring / factor fee",
+  "net 30 / quick pay",
+  "IFTA",
+  "IRP / plates",
+  "HVUT / 2290",
+  "BOC-3",
+  "cargo insurance / liability / physical damage",
+  "non-trucking liability",
+  "per diem",
+  "write-offs",
+  "Schedule C",
+  "CSA / PSP",
+  "broker credit score",
+  "double-brokering",
+  "'ghost' loads / fictitious pickup scams",
+  "load-to-truck ratio",
+  "reefer fuel",
+  "DEF / regen / DPF delete (controversial)",
+  "aftertreatment",
+  "engine overhaul / in-frame",
+  "turbo / injectors / EGR",
+  "tire cost per mile",
+  "APU",
+  "bobtail insurance",
+  "truck note / balloon payment",
+  "maintenance fund / rainy-day fund",
+  "road service",
+  "tow bill",
+  "breakdown",
+  "load-to-pay",
+  "fuel card discount",
+  "IFTA receipts",
+  "'driver rate' vs 'customer rate'"
+ ],
+ "pain_points": [
+  "Detention: sitting 4, 6, 8 hours at a dock and the 'free' 2 hours turns into never getting paid",
+  "Shipper says 'your appointment is 8 AM' and loads you at 2 PM, then the receiver is closed by the time you arrive",
+  "'No parking' signs and no truck parking anywhere; sleeping on an off-ramp and getting knocked on by police at 2 AM",
+  "ELD clock running out with 40 miles to go and every lot full: choose between a violation and the shoulder",
+  "Brokers calling every hour for 'a quick ETA' while the app tracking is already on",
+  "Shipper bathrooms that say 'No Driver Facilities'; 'employees only' for a guy who's been up 14 hours",
+  "Lumper fees collected in cash or Comchecks, sometimes hundreds, for pallets that slid off a trailer in 20 minutes",
+  "Dispatch pushing a load that's physically impossible inside the hours, then blaming the driver when it's late",
+  "Four-wheelers merging into the 2-second gap, hitting the brakes, then glaring at us",
+  "Diesel prices swinging 50 cents between exits and fuel cards charging a fortune",
+  "Weigh stations with a 40-truck line while the lane is closed",
+  "Tire blowouts, reefer units dying, DEF derates at the worst possible moment",
+  "Company 'safety' pushing in-cab cameras and speed limiters while we're paid by the mile",
+  "Pay that never keeps up: the 'cents per mile' increase that doesn't cover the fuel price jump",
+  "Training-mill rookies who can't back up or stay in a lane",
+  "Nobody sees us until the shelves are empty, then it's 'heroes' for a week",
+  "Rates that don't cover CPM: loads posted below break-even and brokers calling it 'market'",
+  "Broker 'bait and switch': the rate on the call is different from the rate con",
+  "The 30-45 day payment wait or a factor eating 2-3% of every load",
+  "Detention that's 'in the contract' but never gets paid without a fight",
+  "Double-brokered loads and fake MC numbers with nobody to call when the check doesn't arrive",
+  "Breakdowns: a $9,000 repair that takes a week of lost revenue on top",
+  "Insurance renewals that jump 20% with no claims",
+  "Fuel price swings, fuel surcharge games, and carrier fuel-card 'discounts' that aren't",
+  "Paperwork: IFTA, IRP, 2290, annual DOT inspection, drug-test clearinghouse",
+  "The truck payment due on the 1st, whether or not freight moved",
+  "Tires: five-figure replacement cycles and recap debates",
+  "DEF derate, regen and aftertreatment failures on a newer truck",
+  "Lease-purchase 'opportunity' traps and carriers that deduct everything",
+  "Being asked to 'do it for the same rate' by someone who's never paid a diesel bill",
+  "Load-board 'rate shopping' where brokers screenshot your rate to the next guy",
+  "Home time: the truck isn't paid for if it's sitting"
+ ],
+ "joys": [
+  "Drop-and-hook that takes 15 minutes",
+  "A shipper who says 'pull to door 3, we'll have you out in 30'",
+  "3 AM empty interstate with the cruise set, coffee hot, nobody on the CB",
+  "A shower stall that's clean and has real water pressure",
+  "Cheap diesel, a good rate con, a load that pays more than the mileage says",
+  "A dock crew that hands you your paperwork and a bottle of water",
+  "Making home time on a Friday",
+  "A parking spot at 5 PM at a truck stop",
+  "Another driver flashing his lights to let you over and a thumb-up",
+  "Perfect first-try blindside back",
+  "A load that pays above CPM and has no deadhead out",
+  "A broker who pays quick, doesn't haggle and calls back with a 'we have another one'",
+  "A dedicated lane or direct shipper relationship that skips the broker margin",
+  "A clean maintenance report and no check-engine light",
+  "Paying off the truck",
+  "Fuel-tax return in the mail",
+  "A reefer load in peak season at a rate that covers the bad months",
+  "Telling a broker 'no' and having the rate go up",
+  "Quarter-end books that actually balance"
+ ],
+ "hot_buttons": [
+  "Broker margin transparency and double-brokering",
+  "Detention pay and free-time rules",
+  "Truck parking shortage",
+  "Speed limiters, driver-facing cameras, new regulations written by people who've never driven",
+  "Outsiders giving driving advice ('just pull over', 'why don't you take a different road')",
+  "Four-wheelers and cruise-control-in-the-left-lane",
+  "Training-mill rookies and freight-hauling fads like the 'trucking is easy money' influencers",
+  "Pay per mile vs pay per hour",
+  "Brokers keeping 20-30% margin while the truck takes the risk",
+  "Spot rates below cost of operation",
+  "Factoring fees and slow-pay",
+  "Insurance cost and the 'accident' that isn't ours",
+  "Fraud: fake brokers, fictitious pickups, identity theft of MC numbers",
+  "Regulations that raise costs but never rates",
+  "Lease-purchase predatory contracts",
+  "The cost of fuel, tires and parts keeps climbing while rates stay flat",
+  "People who think we're 'making six figures' without seeing the expenses"
+ ],
+ "in_jokes": [
+  "The 'elephant race': one truck doing 62.5 mph spends 12 miles passing another doing 62.0 mph",
+  "'The 15-minute unload' that takes 7 hours",
+  "Roller-grill hot dogs at 2 AM as a food group",
+  "Yellow Gatorade bottles on the shoulder ('trucker bombs')",
+  "The CB guy who's convinced the whole interstate is his personal stage",
+  "'Just ten more miles' before shutting down, said 40 miles ago",
+  "Shipper guard shack: 'Who are you here for?' as if there are 400 options",
+  "'Employees only' bathrooms",
+  "Truck-stop parking lot Tetris at 9 PM",
+  "'Driver rate' vs 'customer rate' (the broker's two different numbers)",
+  "Dispatch: 'Should be an easy load!' (it never is)",
+  "The one guy at the dock who has never seen a truck before",
+  "'Revenue' vs 'profit' (the six-figure gross that ends up at $38k)",
+  "The truck payment, insurance and fuel all hitting the same week",
+  "The rate con that says $1.80 when the call said $2.20",
+  "'Great relationship' = 'we'll keep underpaying you'",
+  "'Whenever you're ready to roll, here's your pickup...' at 11 PM",
+  "'Market is soft' means the broker's margin is not",
+  "Doing math in the cab: 'what's my CPM again?'",
+  "Every owner-op has a pet theory about the best diesel stop and a rant about 'the market'",
+  "Sunday night: the board looks great; Monday morning: it's all gone",
+  "When a check engine light comes on, the whole truck goes quiet",
+  "The 'who's really working for who?' joke between carrier and driver",
+  "'I'll call you back' from a broker that never does"
+ ],
+ "humor_style": "Dry, deadpan, exhausted, and numerate. We joke about the pain instead of complaining about it, with specific details (6 hours, 41 miles, $450 cash, a $9,000 turbo). We roast brokers, dispatchers, shippers, factors, insurers and four-wheelers; we are gentle on other drivers and fiercely proud of the skill. Self-deprecating about the lifestyle (health, food, sleep, loneliness) but never about the skill. We are crude when it is funny: bodily functions, sleeper-berth innuendo, home-time jokes, the gas-station sushi regret. It lands when the situation is specific and recognizable. It dies when it is generic ('Trucking is hard lol'), inspirational, movie-trucker 'breaker breaker' voice, or an influencer pitch about 'being your own boss'.",
+ "reaction_playbook": [
+  "Disbelief at a ridiculous ask (rate, timeline, 'can you take it for the same pay?') -> a clip of someone going 'WHAT?' or 'you're out of your mind'",
+  "Smug dispatcher/broker confidence -> a clip of someone confidently wrong or condescending",
+  "Quiet defeat after a long wait -> a deadpan 'cool, cool, cool' or a long exhale",
+  "Rage that has to stay polite -> someone smiling through gritted teeth",
+  "A perfect, tiny win (parking spot, empty dock) -> a clip of someone looking genuinely happy or a fist pump",
+  "Pointing out the obvious everyone's ignoring -> a 'well, yeah' or 'obviously' delivery",
+  "Format: 'When [specific trucking situation]' or 'POV: [role] saying [thing]' or 'Me: [X]. Dispatch: [Y]'. Keep it under 90 characters, use real numbers, never explain the joke.",
+  "Absurd lowball (spot rate, rate con, 'same rate') -> a clip of someone laughing in disbelief, saying 'no way', 'are you serious', or hanging up",
+  "Broker or shipper smug confidence -> a clip of someone confidently explaining something they clearly have no clue about",
+  "The math coming out wrong -> a long silence, a 'hmm' or a stare",
+  "Surviving another bad quarter -> a deadpan 'it's fine, everything's fine'",
+  "A rare win (good rate, quick pay, no breakdown) -> a clip of someone celebrating or looking smug",
+  "Getting asked to do more for less -> a 'you want me to WHAT?' reaction",
+  "Format: 'Broker: [offer]. Me: [reaction]' or 'POV: [fee/bill] hits my account' or 'When the [number] doesn't cover [expense]'. Under 90 characters, real numbers, never explain the joke."
+ ],
+ "authority_figures": [
+  "Brokers (resent: TQL, CH Robinson, Landstar and every 'double-broker' with a fake MC number)",
+  "Dispatchers/driver managers (love the ones who fight for us, resent the ones who've never driven)",
+  "DOT officers and scale inspectors (respect the fair ones, avoid the rest)",
+  "Shippers and receivers (docks that treat us like a nuisance)",
+  "Mega-carrier safety departments and fleet managers",
+  "FMCSA / federal rule-makers",
+  "Veteran drivers with 30+ years (respect)",
+  "Truck-stop staff who treat drivers like humans (respect)",
+  "Brokers (the good ones who pay fast, the bad ones who ghost)",
+  "Factoring companies",
+  "Shippers/receivers",
+  "Insurance agents",
+  "DOT/FMCSA and state fuel-tax agencies",
+  "Dealership/shop service managers",
+  "Other owner-operators with 20+ years (respect)",
+  "Mechanics who answer the phone at 2 AM (respect)"
+ ],
+ "never_say": [
+  "'Breaker breaker 1-9' or any movie-trucker slang",
+  "'Honk your horn for me!'",
+  "'Trucking is such an adventure, you get to see the whole country!'",
+  "'Just park somewhere else' or 'just call it a day'",
+  "'Trucking is easy money'",
+  "'Heroes of the road' / corporate thank-you language",
+  "Anything that mocks the profession itself; roast the system, not the driver",
+  "Politics, immigration, or anything that splits drivers by group",
+  "'Be your own boss, six-figure income!' (influencer talk)",
+  "'Just negotiate a better rate' without acknowledging the market",
+  "'Truckers are all rich now' or any hint we aren't also running a business",
+  "Movie-trucker slang",
+  "Mocking the profession; roast brokers, fees and the system instead",
+  "Politics and anything that splits drivers by group",
+  "Explicit sexual content, slurs, or jokes that single out a race, religion, nationality or gender. Crude and cheeky is fine; hateful is not"
+ ],
+ "example_captions": [
+  "When the dock says '15 minutes' and it's hour 6",
+  "POV: broker offering 20% under spot for 'the relationship'",
+  "Me: only 40 miles left on the clock. Every truck stop: full",
+  "Shipper: 'drivers can use the porta-potty in the gravel yard'",
+  "Dispatch at 4:55 PM Friday: 'can you squeeze in one more?'",
+  "Four-wheeler merging into my 2-second gap and braking",
+  "When the receiver closes at 2 and my appointment is 3",
+  "Me trying to explain detention to someone who's never loaded a truck",
+  "When the lumper wants $450 cash for six pallets",
+  "My ELD at 13:58 on the 14-hour clock",
+  "Broker: 'just checking in' for the fourth time this hour",
+  "The guy who wouldn't merge for a mile finally getting in front of me and doing 55",
+  "Broker: 'what's your best rate?' Me: 'My CPM.' Broker: 'we'll call you back'",
+  "POV: factor takes 3% and the truck payment hits the same day",
+  "When the rate con says $1.80 and the call said $2.20",
+  "Spot rate below my cost per mile and the broker calls it 'the market'",
+  "Check engine light the week insurance renews",
+  "Me explaining to a shipper why detention isn't a 'courtesy'",
+  "'We'd love to build a relationship' = a lane at $1.60",
+  "Brokers when I say 'I'll pass' and the rate goes up $400",
+  "When the 'six-figure owner-operator' video doesn't mention the $90k in expenses",
+  "Broker: 'driver rate is $1.90.' Customer rate: $3.10",
+  "Every trucker after the DEF derate: 'it was working this morning'",
+  "My bank account after a $9,000 turbo repair"
+ ],
+ "caption_formats": [
+  "WHEN + a specific situation: 'When the receiver closes at 2 and my appointment is 3' (the workhorse, but use it for at most about half of any batch)",
+  "POV: 'POV: you're 41 miles from the shipper with 9 minutes on the clock and every lot is full'",
+  "TWO-LINE exchange: 'Dispatch: it's an easy one. / The load: two stops, a lumper and a blind-side' (the reply is the joke)",
+  "ROLE + QUOTE: 'Broker at 4:55 PM Friday: \"just a quick one\"' (quote the exact line people hear)",
+  "NUMBERS-FIRST: '$450 cash for six pallets and no receipt' | '7 hours of detention for a 15-minute unload' (the figure is the joke)",
+  "THE WAY...: 'The way the shipper looks at you when you ask for a bathroom' (for a reaction face)",
+  "ONE-LINE LABEL: 'Me explaining detention to someone who has never loaded a truck' (calm, deadpan, no setup)",
+  "ROOKIE vs VETERAN: 'Day 3 trucker vs 30-year driver when the dock says \"15 minutes\"'",
+  "FOR A LONGER BIT, A HOOK: 'The broker said the quiet part out loud' | 'Story time: the worst detention I ever sat' | 'Watch what happens when someone asks where the margin goes' | 'POV: you finally say \"no\" to the lowball and hear the silence' (set up what's at stake, do not give away the payoff)",
+  "BROKER/ME exchange: 'Broker: \"what's your best rate?\" Me: \"my CPM.\" Broker: \"we'll call you back\"' (the reply is the joke)",
+  "THE NUMBER IS THE JOKE: '$1.80 on the rate con. $2.20 on the call.' | '$9,000 turbo, same week as the insurance renewal'",
+  "POV: 'POV: the factor takes 3% and the truck payment hits the same day'",
+  "WHEN + specific: 'When the rate con says $1.80 and the call said $2.20' (use for at most about half of a batch)",
+  "SPREADSHEET LABEL: 'Gross: $14,200. Net: $2,900. Influencer: \"six figures!\"'",
+  "ROLE + QUOTE: 'Broker at 5 PM Friday: \"driver rate is $1.90\". Customer rate: $3.10'",
+  "THE WAY...: 'The way the shop says \"we found a few other things\"'",
+  "ONE-LINE LABEL: 'Me explaining to a shipper why detention isn't a courtesy'",
+  "FOR A LONGER BIT, A HOOK: 'A broker finally explains the margin' | 'The math nobody puts in the \"owner-operator\" video' | 'Watch what happens when you say \"my CPM\" out loud' | 'POV: you say \"no\" to the lowball and the rate goes up' (frame what's at stake, never spoil the payoff)"
+ ],
+ "good_vs_bad": [
+  "BAD (generic, any job): 'When your boss is being annoying' | GOOD (ours): 'Dispatch: \"it's an easy one\". The load: two stops, a lumper and a blind-side dock'",
+  "BAD (cheesy outsider voice): 'Truckers be like... breaker breaker' | GOOD: 'Four-wheeler merging into my 2-second gap and braking'",
+  "BAD (explains the joke): 'When the broker lowballs you, which makes drivers angry' | GOOD: 'Broker: \"20% under spot, but think of the relationship\"'",
+  "BAD (vague pain): 'Waiting at the dock is the worst' | GOOD: 'When the dock says \"15 minutes\" and it's hour 6'",
+  "BAD (inspirational): 'Keep on truckin', the road is life' | GOOD: 'Me at 3 AM, roller-grill hot dog #2, still 200 miles out'",
+  "BAD (forced match, clip is someone calm and happy): captioning a smiling agreement as detention rage | GOOD: mark it unusable, or find a calm 'good news' situation like 'When the receiver says \"you can leave\"'",
+  "BAD (the clip needs a paragraph to connect): a caption that only fits if you know the speaker's whole argument | GOOD: a caption that works with the clip muted for the first second",
+  "BAD (vague): 'Rates are low and it's hard being an owner-operator' | GOOD: 'Spot rate below my cost per mile and the broker calls it \"the market\"'",
+  "BAD (motivational poster): 'Be your own boss, build your empire' | GOOD: 'Being my own boss: dispatcher, bookkeeper, safety department and the mechanic's favourite customer'",
+  "BAD (explains the joke): 'When brokers underpay, which is a problem for business owners' | GOOD: 'Broker: \"we'd love to build a relationship.\" The relationship: $1.60 a mile'",
+  "BAD (no number): 'Insurance went up again' | GOOD: 'Insurance renewal: +25%. Claims this year: zero'",
+  "BAD (outsider voice): 'Truckers be hauling that gold' | GOOD: 'The six-figure gross that turns into $38k'",
+  "BAD (forced match, the clip is someone cheerful): a bitter lowball caption on a clip of someone laughing happily | GOOD: mark it unusable, or find a win situation like 'Telling the broker no and the rate going up $400'",
+  "BAD (needs a paragraph to connect): a caption that only works if you know the speaker's whole point | GOOD: a caption that fits the first 2 seconds of the clip"
+ ],
+ "recurring_characters": [
+  "The dispatcher who says 'it's an easy one' (it never is)",
+  "The broker who is 'just checking in' for the fourth time this hour",
+  "The guard-shack guy asking 'who are you here for?' with a clipboard and no urgency",
+  "The receiver who is 'on lunch' from noon until your clock runs out",
+  "The four-wheeler in the left lane doing 61 who will not move",
+  "The rookie on day 3 who just discovered the 14-hour clock",
+  "The 30-year driver at the fuel island who has opinions about everything and is right about most of it",
+  "The safety-department email that shows up at 2 AM",
+  "The lumper crew who needs cash and won't say how much until the pallets are off",
+  "The broker with 'a great relationship' to offer (at $1.60 a mile)",
+  "The factor whose fee is 'only' 3% (of everything, forever)",
+  "The insurance agent whose renewal quote arrives right after a breakdown",
+  "The shop service writer: 'we found a few other things'",
+  "The shipper's accounts-payable department: 'it's in the system'",
+  "The buddy who bought a truck after one YouTube video and now asks to borrow your CPM sheet",
+  "The 20-year owner-op who has seen three market crashes and is calm about all of them",
+  "The ghost broker with a cloned MC number and a very friendly voice"
+ ],
+ "pairing_rules": [
+  "Match the clip's EMOTION first, topic second. A sneer fits a smug dispatcher; a long sigh fits hour 6. If the emotion doesn't fit any believable situation from our world, mark it unusable.",
+  "The connection must be instant: if explaining why the caption fits the clip takes a sentence, it is a bad match.",
+  "Do not caption a person in real hardship (illness, grief, injury, crisis) as a joke about trucking.",
+  "Do not caption political, religious or identity-based clips. Skip them.",
+  "A longer 'bit' gets a HOOK about what's at stake, never a punchline that spoils it.",
+  "Never copy the example captions. They show voice and format only. Write a new situation every time, and vary the format across a batch.",
+  "Match the clip's EMOTION first, topic second. A sneer fits a smug broker; a long stare fits the CPM math coming out wrong. If the emotion doesn't fit any believable situation from our world, mark it unusable.",
+  "Real numbers beat vague complaints. If a caption can carry a believable figure (a rate, a fee, a percentage), it should."
+ ],
+ "situation_bank": [
+  {
+   "domain": "The dock, the wait and detention",
+   "situations": [
+    {
+     "t": "Forklift guy wants a $350 Comcheck before he even looks at my pallets.",
+     "s": 0
+    },
+    {
+     "t": "Waking up to the trailer rocking and praying that forklift doesn't punch through.",
+     "s": 0
+    },
+    {
+     "t": "Opening the shipper's gravel-yard porta-potty in July and choosing to hold it.",
+     "s": 1
+    },
+    {
+     "t": "Yard jockey dropping a frozen reefer three inches from my mirror and speeding off.",
+     "s": 0
+    },
+    {
+     "t": "Guard shack asking \"who are you picking up for?\" outside a single-customer warehouse.",
+     "s": 0
+    },
+    {
+     "t": "Bumping door 14 just in time for the entire warehouse crew's hour lunch break.",
+     "s": 0
+    },
+    {
+     "t": "Feeling the dock light turn green before I even finish writing my logs.",
+     "s": 0
+    },
+    {
+     "t": "Trapped in the dock for six hours testing the limits of a Gatorade bottle.",
+     "s": 1
+    },
+    {
+     "t": "Lumper asking for $200 cash to restack the pallets I watched him knock over.",
+     "s": 0
+    },
+    {
+     "t": "Shipper refusing to load me until I slide my tandems back that last inch.",
+     "s": 0
+    },
+    {
+     "t": "Forklift slamming the trailer so hard it ruins the only good sleeper berth dream.",
+     "s": 2
+    },
+    {
+     "t": "Shipper writing 14:00 on the BOL when they actually finished loading me at 19:30.",
+     "s": 0
+    },
+    {
+     "t": "\"Park on the shoulder, we'll call you.\" Three hours later, shift change happens.",
+     "s": 0
+    },
+    {
+     "t": "Begging to use the \"employees only\" bathroom after my third roller dog hits bottom.",
+     "s": 1
+    },
+    {
+     "t": "That rhythmic forklift shake is the most action this sleeper berth has seen lately.",
+     "s": 2
+    },
+    {
+     "t": "Receiver rejecting one single damaged box of toilet paper from a 53-foot dry van.",
+     "s": 0
+    },
+    {
+     "t": "Guard cutting my bolt seal just to hand it back and say \"doors open.\"",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Dispatch and the office",
+   "situations": [
+    {
+     "t": "Dispatch: \"It’s a drop-and-hook.\" The BOL: 40,000 pounds of floor-loaded tires.",
+     "s": 0
+    },
+    {
+     "t": "Weekend dispatch demanding an ETA while my rig is visibly on a tow hook.",
+     "s": 0
+    },
+    {
+     "t": "Safety department sending a fleet-wide \"drive safe in the snow\" macro in mid-July.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch swearing the route is legal because they checked Google Maps street view.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch offering a Friday reset miles away while my wife waits in new lingerie.",
+     "s": 2
+    },
+    {
+     "t": "Dispatch: \"Can you just hold it?\" Me, sweating after three gas-station roller dogs.",
+     "s": 1
+    },
+    {
+     "t": "Load planner calculating my ETA at 65 mph straight over Donner Pass.",
+     "s": 0
+    },
+    {
+     "t": "The Omnitracs text-to-speech blasting at 2 AM for a \"critical\" company newsletter.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch calling it a \"premium lane.\" The destination: Hunt's Point Meat Market.",
+     "s": 0
+    },
+    {
+     "t": "\"We’re getting you home, driver.\" The routing: a 400-mile deadhead to North Dakota.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch complaining about the office AC while I aim into a hot Gatorade bottle.",
+     "s": 1
+    },
+    {
+     "t": "Getting way too excited by night dispatch's raspy voice after three weeks out.",
+     "s": 2
+    },
+    {
+     "t": "Driver manager calling for my location while literally staring at my Samsara dot.",
+     "s": 0
+    },
+    {
+     "t": "Safety calling because the driver-facing camera caught me adjusting my junk on I-80.",
+     "s": 1
+    },
+    {
+     "t": "Dispatch asking if a blown turbo will \"really prevent you from making delivery.\"",
+     "s": 0
+    },
+    {
+     "t": "Dispatch demanding the BOL while I’m prairie-dogging it in the shipper's dirt lot.",
+     "s": 1
+    },
+    {
+     "t": "Hitting \"refuse load\" on the Qualcomm and watching the broker rate magically jump $300.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Brokers, rates and negotiation",
+   "situations": [
+    {
+     "t": "TQL calling a $1.35 a mile reefer load \"the current market rate\".",
+     "s": 0
+    },
+    {
+     "t": "Hanging up on a $1.50 offer and watching it repost at $2.10.",
+     "s": 0
+    },
+    {
+     "t": "Brokers talking about \"building a relationship\" while aggressively trying to rawdog your CPM.",
+     "s": 1
+    },
+    {
+     "t": "The rate con arriving 45 minutes late, suddenly missing the fuel surcharge.",
+     "s": 0
+    },
+    {
+     "t": "Asking the Landstar agent how much of the customer's rate they actually kept.",
+     "s": 0
+    },
+    {
+     "t": "Brokers expect you to take $1.10 a mile and still swallow.",
+     "s": 2
+    },
+    {
+     "t": "Factoring taking 3% when the spot rate is already shitting on your CPM.",
+     "s": 1
+    },
+    {
+     "t": "When a direct shipper skips the broker and pays your actual operating CPM.",
+     "s": 0
+    },
+    {
+     "t": "Broker: \"It's ready now.\" The rate con: pickup tomorrow at 0800.",
+     "s": 0
+    },
+    {
+     "t": "Refreshing DAT at 2 AM looking for a backhaul that isn't total dogshit.",
+     "s": 1
+    },
+    {
+     "t": "\"I have a truck in hand right now.\" (Me, bobtailing empty toward home.)",
+     "s": 0
+    },
+    {
+     "t": "Getting a $150 TONU after burning $60 in diesel just to get there.",
+     "s": 0
+    },
+    {
+     "t": "Telling a double-broker with a month-old MC number to kiss your whole ass.",
+     "s": 1
+    },
+    {
+     "t": "Telling the broker \"my CPM is $2.10\" and just letting the silence hang.",
+     "s": 0
+    },
+    {
+     "t": "Broker swears it’s a light load, then the CAT scale prints 79,850 pounds.",
+     "s": 0
+    },
+    {
+     "t": "\"Market is soft\" said by a guy making 30% margin in his pajamas.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Parking and sleep",
+   "situations": [
+    {
+     "t": "When the last spot at the Love's is taken by a local day-cab.",
+     "s": 0
+    },
+    {
+     "t": "3 AM, 12 degrees out, and trusting your aim with the wide-mouth Gatorade bottle.",
+     "s": 1
+    },
+    {
+     "t": "Trying to sleep while the team drivers next door rock their cab off the suspension.",
+     "s": 2
+    },
+    {
+     "t": "The 2 AM flashlight knock on the off-ramp just as you hit REM sleep.",
+     "s": 0
+    },
+    {
+     "t": "The guy next to you starting his 1990s Carrier reefer right at 10 PM.",
+     "s": 1
+    },
+    {
+     "t": "Waking up sweating at 3 AM because the Webasto heater only has one setting: hell.",
+     "s": 0
+    },
+    {
+     "t": "Four weeks out, finally home, and finishing in less time than a drop-and-hook.",
+     "s": 2
+    },
+    {
+     "t": "Parallel parking a 53-footer into the dirt shoulder of the Ohio Turnpike rest area.",
+     "s": 0
+    },
+    {
+     "t": "Stepping out in slides at the Pilot and splashing ankle-deep into a mystery puddle.",
+     "s": 1
+    },
+    {
+     "t": "Three minutes left on the drive clock and the TA lot looks like a warzone.",
+     "s": 0
+    },
+    {
+     "t": "The exact moment your Thermo King APU throws a code in August in Laredo.",
+     "s": 0
+    },
+    {
+     "t": "Finding someone else's freshly filled trucker bomb rolling under your steers during pre-trip.",
+     "s": 1
+    },
+    {
+     "t": "Opening the curtains and needing three full minutes to remember what state you're in.",
+     "s": 0
+    },
+    {
+     "t": "When the midnight knock on your sleeper definitely doesn't accept Comdata or EFS cards.",
+     "s": 2
+    },
+    {
+     "t": "Realizing the creative parkers at the Flying J have completely boxed your truck in.",
+     "s": 0
+    },
+    {
+     "t": "When the roller dogs hit your lower intestines at 2 AM with zero warning.",
+     "s": 1
+    },
+    {
+     "t": "Pulling into a sketchy dirt lot at 10 PM and finding it magically empty.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "The road itself (specific highways, states, bridges, mountains, terrain)",
+   "situations": [
+    {
+     "t": "60mph crosswinds on I-80 in Wyoming while pulling an empty dry van.",
+     "s": 0
+    },
+    {
+     "t": "Chicago I-294 construction where concrete barriers are an inch from your mirrors.",
+     "s": 0
+    },
+    {
+     "t": "Smelling burnt brake pads halfway down Cabbage Hill on I-84.",
+     "s": 0
+    },
+    {
+     "t": "The $130 George Washington Bridge toll on a load paying $1.80 a mile.",
+     "s": 0
+    },
+    {
+     "t": "I-65 in Indiana rearranging your entire cab interior with one pothole.",
+     "s": 0
+    },
+    {
+     "t": "Getting passed by a Prius doing 85 in California's 55mph truck lane.",
+     "s": 0
+    },
+    {
+     "t": "Coolant needle climbing on the Baker Grade in July with 44,000 pounds.",
+     "s": 0
+    },
+    {
+     "t": "Hitting the jakes down Monteagle while four-wheelers smoke their brakes.",
+     "s": 0
+    },
+    {
+     "t": "US-93 in Nevada at 3 AM, cruise control set, zero headlights for hours.",
+     "s": 0
+    },
+    {
+     "t": "The Pennsylvania Turnpike toll hitting the E-ZPass and wiping out your profit margin.",
+     "s": 0
+    },
+    {
+     "t": "Smelling the Amarillo feedlots on I-40 ten miles before you actually see them.",
+     "s": 1
+    },
+    {
+     "t": "Hitting an I-70 bridge expansion joint that instantly tests your bladder capacity.",
+     "s": 1
+    },
+    {
+     "t": "Hitting black ice on I-90 and puckering so hard you grab seat fabric.",
+     "s": 1
+    },
+    {
+     "t": "A 40-mile stretch of nowhere in Utah when the TA roller dog hits.",
+     "s": 1
+    },
+    {
+     "t": "Dodging 40 pounds of shredded recap tires in the middle lane of I-285.",
+     "s": 1
+    },
+    {
+     "t": "I-80 Wyoming rumble strips hitting a little too nice after six weeks solo.",
+     "s": 2
+    },
+    {
+     "t": "Last 30 miles on I-95 before home-time and the wife sends that text.",
+     "s": 2
+    }
+   ]
+  },
+  {
+   "domain": "Weather and seasons",
+   "situations": [
+    {
+     "t": "White-knuckling a deadhead dry van across I-80 in Wyoming with 55mph crosswinds.",
+     "s": 0
+    },
+    {
+     "t": "Peeling swamp-ass thighs off a vinyl seat waiting for a Laredo door in July.",
+     "s": 1
+    },
+    {
+     "t": "Trying to beat the Donner Pass chain-law flashing signs by exactly three minutes.",
+     "s": 0
+    },
+    {
+     "t": "Slipping in icy mud and eating shit while cranking frozen landing gear.",
+     "s": 1
+    },
+    {
+     "t": "The Espar bunk heater throwing a fault code at -14°F in Minot, North Dakota.",
+     "s": 0
+    },
+    {
+     "t": "Hitting a Nebraska bug swarm right after the washer fluid reservoir goes bone dry.",
+     "s": 0
+    },
+    {
+     "t": "Tornado sirens blaring in Oklahoma while dispatch messages asking for a revised ETA.",
+     "s": 0
+    },
+    {
+     "t": "Beating the frozen swing doors with a three-pound sledgehammer at 4 AM.",
+     "s": 0
+    },
+    {
+     "t": "Waking up to gelled fuel because you cheaped out on Howes anti-gel in Minnesota.",
+     "s": 0
+    },
+    {
+     "t": "Sweating through your flannel because you dressed for Chicago but ended up in Houston.",
+     "s": 0
+    },
+    {
+     "t": "Broken APU in Phoenix means sleeping buck naked on top of a soaked mattress.",
+     "s": 2
+    },
+    {
+     "t": "Watching the Subaru that passed you doing 75 in a blizzard immediately spin out.",
+     "s": 0
+    },
+    {
+     "t": "Wrestling a stiff lumber tarp in 30-degree freezing rain outside of Seattle.",
+     "s": 0
+    },
+    {
+     "t": "The sleeper berth getting steamy enough to fog the windows during a wife ride-along.",
+     "s": 2
+    },
+    {
+     "t": "Trying not to step in the frozen trucker-bomb puddles circling the Gary fuel island.",
+     "s": 1
+    },
+    {
+     "t": "Rutting season meaning you have a staring contest with a 10-point buck at 70mph.",
+     "s": 0
+    },
+    {
+     "t": "Trying to pee between the trailer tires in a bitter 40mph Wyoming crosswind.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Four-wheelers and traffic",
+   "situations": [
+    {
+     "t": "The Prius doing 61 that hits 75 the exact second my blinker goes on.",
+     "s": 0
+    },
+    {
+     "t": "Riding my right-side steer tire blind spot from Omaha to Lincoln just for fun.",
+     "s": 0
+    },
+    {
+     "t": "Merging into my three-second stopping gap just to slam the brakes for the exit.",
+     "s": 0
+    },
+    {
+     "t": "Lifted F-150 tailgating with high beams bouncing straight off my convex mirrors.",
+     "s": 0
+    },
+    {
+     "t": "Bumper-to-bumper in Atlanta while desperately trying to aim into a warm Gatorade bottle.",
+     "s": 1
+    },
+    {
+     "t": "The passenger giving road head who doesn't realize how high my seating position is.",
+     "s": 2
+    },
+    {
+     "t": "Watching the four-wheeler who flipped me off get trapped behind a slow wide-load.",
+     "s": 0
+    },
+    {
+     "t": "Soccer mom drifting into my lane while screaming at her FaceTime call.",
+     "s": 0
+    },
+    {
+     "t": "A mile-long line of angry minivans while I pass a Swift truck doing 64.5.",
+     "s": 0
+    },
+    {
+     "t": "RV towing a Jeep taking up three truck parking spots while my bladder screams.",
+     "s": 1
+    },
+    {
+     "t": "Ripping a massive protein-fart right as a convertible pulls up next to my cab.",
+     "s": 1
+    },
+    {
+     "t": "Mardi Gras on I-10 when the bachelorette party bus realizes you're looking down.",
+     "s": 2
+    },
+    {
+     "t": "Watching the Audi doing 80 on black ice spin into the Wyoming median.",
+     "s": 0
+    },
+    {
+     "t": "On-ramp hero matching my exact 65 mph pace instead of passing or braking.",
+     "s": 0
+    },
+    {
+     "t": "Staring down into a Corolla at a red light watching him dig for gold.",
+     "s": 1
+    },
+    {
+     "t": "Catching a couple going at it under a glass moonroof during Chicago gridlock.",
+     "s": 2
+    },
+    {
+     "t": "The pickup driver who actually flashes his lights to let me over safely.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Scales, DOT and inspections",
+   "situations": [
+    {
+     "t": "PrePass green light while 500 lbs over on the trailer tandem.",
+     "s": 0
+    },
+    {
+     "t": "Prairie-dogging a roller dog while the DOT cop checks my gladhands.",
+     "s": 1
+    },
+    {
+     "t": "When the DOT trainee searches my sleeper and finds the \"home time\" toys.",
+     "s": 2
+    },
+    {
+     "t": "Bypass lane closed, scale backed up to the interstate, sign still says \"Open\".",
+     "s": 0
+    },
+    {
+     "t": "Getting a Level 1 because the inspector needs one more for his quota.",
+     "s": 0
+    },
+    {
+     "t": "Sliding the fifth wheel in freezing rain because the drives are 300 over.",
+     "s": 0
+    },
+    {
+     "t": "Officer staring at my unwashed sheets and a crusty sock during a sleeper check.",
+     "s": 2
+    },
+    {
+     "t": "Weigh-in-motion hits you with \"Truck Must Enter\" at 79,950 gross.",
+     "s": 0
+    },
+    {
+     "t": "The rookie inspector tapping my recap tires like he knows what it means.",
+     "s": 0
+    },
+    {
+     "t": "CVSA Roadcheck week and the chicken coop has a three-mile line of flatbeds.",
+     "s": 0
+    },
+    {
+     "t": "Getting that clean CVSA decal slapped on the windshield after an hour.",
+     "s": 0
+    },
+    {
+     "t": "Holding back morning diarrhea while he reads my IFTA permit line by line.",
+     "s": 1
+    },
+    {
+     "t": "The one cab clearance light that dies exactly when I roll onto the scale.",
+     "s": 0
+    },
+    {
+     "t": "Sneaking past the Banning scale at 3 AM seeing that beautiful \"Closed\" sign.",
+     "s": 0
+    },
+    {
+     "t": "Wiping trucker bomb residue off the catwalk right before a Level 2 starts.",
+     "s": 1
+    },
+    {
+     "t": "Officer asks for my logs while I'm holding a gallon jug of warm yellow.",
+     "s": 1
+    },
+    {
+     "t": "Waiting for the CAT scale printout praying the steer axle isn't over 12,500.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Food, coffee and truck-stop life",
+   "situations": [
+    {
+     "t": "Deciding between the Jalapeño cheddar roller dog and immediate gastric regret at 2 AM.",
+     "s": 1
+    },
+    {
+     "t": "When the Pilot coffee dispenser just spits out warm brown water at 3 AM.",
+     "s": 0
+    },
+    {
+     "t": "Stepping into a Flying J shower and realizing the floor drain is backed up.",
+     "s": 1
+    },
+    {
+     "t": "Hearing the team drivers in the truck next to you making the cab rock.",
+     "s": 2
+    },
+    {
+     "t": "Watching a rookie attempt parking-lot Tetris between two Peterbilts at a packed Love's.",
+     "s": 0
+    },
+    {
+     "t": "The grim realization that you're eating Love's Subway for the fourth straight night.",
+     "s": 0
+    },
+    {
+     "t": "Spotting a fresh gallon-jug trucker bomb baking in the sun by the pumps.",
+     "s": 1
+    },
+    {
+     "t": "Scoring a Love's shower that actually has real heat and decent water pressure.",
+     "s": 0
+    },
+    {
+     "t": "The driver taking his 30-minute break at the fuel island to buy flip-flops.",
+     "s": 0
+    },
+    {
+     "t": "Walking into a rest area stall and seeing the toilet seat is completely missing.",
+     "s": 1
+    },
+    {
+     "t": "The 30-year veteran at the Iron Skillet loudly explaining why your engine is garbage.",
+     "s": 0
+    },
+    {
+     "t": "Eating a lukewarm Jimmy Dean bowl in the driver's seat while staring at headlights.",
+     "s": 0
+    },
+    {
+     "t": "The rumble in your guts 40 miles after eating the Petro buffet meatloaf.",
+     "s": 1
+    },
+    {
+     "t": "Staring at the 'team shower' option on the kiosk after five weeks out alone.",
+     "s": 2
+    },
+    {
+     "t": "Paying $8.50 for a bruised banana and a stale white Monster energy drink.",
+     "s": 0
+    },
+    {
+     "t": "Snagging the very last unreserved spot at the TA right as the sun sets.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Showers, bathrooms and bodily functions",
+   "situations": [
+    {
+     "t": "Finding a Pilot shower that actually has real water pressure.",
+     "s": 0
+    },
+    {
+     "t": "Guard shack pointing to an \"Employees Only\" bathroom after an 11-hour drive.",
+     "s": 0
+    },
+    {
+     "t": "Stepping over a fresh, warm yellow Gatorade bottle left right on the fuel island.",
+     "s": 1
+    },
+    {
+     "t": "Realizing you forgot your shower flip-flops at the West Memphis TA.",
+     "s": 1
+    },
+    {
+     "t": "Opening the shipper's gravel-lot porta-potty when it’s 105 degrees in late July.",
+     "s": 1
+    },
+    {
+     "t": "That 2 AM roller dog hitting your stomach 40 miles from a rest area.",
+     "s": 1
+    },
+    {
+     "t": "Giving your extra Love's shower credit to a flatbedder completely covered in tarp grease.",
+     "s": 0
+    },
+    {
+     "t": "Trying to wash your face while holding down that stupid rest-area push-button faucet.",
+     "s": 0
+    },
+    {
+     "t": "Sitting on your own actual porcelain toilet after three straight weeks of Pilot stalls.",
+     "s": 0
+    },
+    {
+     "t": "\"Customer 45, your shower is ready\" blaring over the intercom while you're half-asleep.",
+     "s": 0
+    },
+    {
+     "t": "Desperately trying to use the shipper's translucent single-ply toilet paper without it disintegrating.",
+     "s": 1
+    },
+    {
+     "t": "Taking a quick shoulder leak in Nebraska and the crosswind suddenly shifts on you.",
+     "s": 1
+    },
+    {
+     "t": "Drying off with a freshly washed Love's towel that feels exactly like 80-grit sandpaper.",
+     "s": 0
+    },
+    {
+     "t": "Finding out the guy before you at the Flying J tried to hover-pee.",
+     "s": 1
+    },
+    {
+     "t": "The guy violently shaking your locked stall door three seconds after you sit down.",
+     "s": 0
+    },
+    {
+     "t": "\"Testing the suspension\" with the wife on night one of your home time.",
+     "s": 2
+    }
+   ]
+  },
+  {
+   "domain": "Health, body and sleep",
+   "situations": [
+    {
+     "t": "Eating three Pilot tornado rollers at 2 AM and feeling my heart vibrate.",
+     "s": 1
+    },
+    {
+     "t": "Laying in my own bed on home time but still feeling the Detroit vibrating.",
+     "s": 0
+    },
+    {
+     "t": "Hitting an Indiana frost heave while violently clenching for the next rest area.",
+     "s": 1
+    },
+    {
+     "t": "Falling asleep just as the Thermo King kicks into high-speed defrost under my pillow.",
+     "s": 0
+    },
+    {
+     "t": "Finding a Love’s shower with actual water pressure and treating it like a spa.",
+     "s": 0
+    },
+    {
+     "t": "When she meets you at the door in just my hoodie after 28 days.",
+     "s": 2
+    },
+    {
+     "t": "Forgetting I'm 45 and jumping out of the cab directly onto a frozen knee.",
+     "s": 0
+    },
+    {
+     "t": "Waking up sweating because the Espar bunk heater turned the sleeper into a sauna.",
+     "s": 0
+    },
+    {
+     "t": "Kicking a suspiciously warm yellow Gatorade bottle left by the previous slip-seat driver.",
+     "s": 1
+    },
+    {
+     "t": "Washing down gas station ibuprofen with a white Monster Energy for a balanced breakfast.",
+     "s": 0
+    },
+    {
+     "t": "Barefoot on a wet TA shower tile because I forgot my trusty shower flip-flops.",
+     "s": 1
+    },
+    {
+     "t": "Parked next to a straight-piped Pete idling at 1000 RPM all damn night.",
+     "s": 0
+    },
+    {
+     "t": "Chugging beet juice and breathing like a monk in the DOT physical waiting room.",
+     "s": 0
+    },
+    {
+     "t": "When the cab is rockin' but it's just me fighting a twin fitted sheet.",
+     "s": 2
+    },
+    {
+     "t": "Quietly adjusting the tilt steering wheel all the way up so my gut fits.",
+     "s": 0
+    },
+    {
+     "t": "When the Flying J roller dog fights the pilot coffee in my lower intestines.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Home time, family and relationships",
+   "situations": [
+    {
+     "t": "Waking up in your own king-size bed and reaching for the yellow air valve.",
+     "s": 0
+    },
+    {
+     "t": "Wife says \"let's go for a drive\" 30 minutes after I parked the rig.",
+     "s": 0
+    },
+    {
+     "t": "Day 1 of home time: sleeping 16 hours while the family whispers downstairs.",
+     "s": 0
+    },
+    {
+     "t": "Explaining to my mom why I can't \"just pull over\" in downtown Chicago.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch calling at 8 AM Saturday during my \"guaranteed\" home time.",
+     "s": 0
+    },
+    {
+     "t": "Family expecting me to be social when I haven't spoken aloud in two weeks.",
+     "s": 0
+    },
+    {
+     "t": "Showering at home without wearing flip-flops or worrying about a 15-minute timer.",
+     "s": 0
+    },
+    {
+     "t": "Unpacking my duffel and praying the roller-dog sweat doesn't ruin the washing machine.",
+     "s": 1
+    },
+    {
+     "t": "Day 3 of home time and secretly missing the hum of my APU.",
+     "s": 0
+    },
+    {
+     "t": "Spending my only Saturday home doing brake pads on the wife's four-wheeler.",
+     "s": 0
+    },
+    {
+     "t": "Walking through the front door after three weeks and immediately locking the bedroom door.",
+     "s": 2
+    },
+    {
+     "t": "Trying to hold it together when the kids ask when I leave again.",
+     "s": 0
+    },
+    {
+     "t": "Rocking the mattress like a rattling Peterbilt because it's the only way I finish.",
+     "s": 2
+    },
+    {
+     "t": "Farting in bed at home and remembering the wife isn't a deaf team driver.",
+     "s": 1
+    },
+    {
+     "t": "Emptying my cab trash and hiding the empty yellow Gatorade bottles from my spouse.",
+     "s": 1
+    },
+    {
+     "t": "Trying to explain a $9,000 turbo rebuild to my wife over our anniversary dinner.",
+     "s": 0
+    },
+    {
+     "t": "When you're making up for lost time but hear a truck engine braking outside.",
+     "s": 2
+    }
+   ]
+  },
+  {
+   "domain": "Loneliness, dating and the 3 AM mind",
+   "situations": [
+    {
+     "t": "Doing the math on a $60k truck payoff somewhere on I-80 at 3 AM.",
+     "s": 0
+    },
+    {
+     "t": "When Tinder says \"there's no one new around you\" at the Salina Love's.",
+     "s": 0
+    },
+    {
+     "t": "Rolling in after three weeks and she's ready before I've unpacked my shower bag.",
+     "s": 2
+    },
+    {
+     "t": "Listening to the same guy tell his life story on channel 19 since Omaha.",
+     "s": 0
+    },
+    {
+     "t": "Mile markers looking like shadow people and I still have 40 miles left.",
+     "s": 0
+    },
+    {
+     "t": "Explaining on a first date that my primary address is a Freightliner Cascadia.",
+     "s": 0
+    },
+    {
+     "t": "Telling the wife we don't have to keep quiet like we're parked at Pilot.",
+     "s": 2
+    },
+    {
+     "t": "Arguing out loud with my dispatcher in a TA shower stall at midnight.",
+     "s": 1
+    },
+    {
+     "t": "When the 2 AM knock is just someone offering \"company\" for forty bucks.",
+     "s": 2
+    },
+    {
+     "t": "Eating two tornados in steering-wheel silence at an unlit dirt lot in Wyoming.",
+     "s": 1
+    },
+    {
+     "t": "Nodding on Bluetooth while the family argues about chores and I'm dodging blown recaps.",
+     "s": 0
+    },
+    {
+     "t": "Screaming 90s country at the windshield because I haven't spoken to a human since Tuesday.",
+     "s": 0
+    },
+    {
+     "t": "Using baby wipes in a Walmart lot because my Tinder date is in twenty minutes.",
+     "s": 1
+    },
+    {
+     "t": "Pulling the tractor brakes after a 640-mile day just to see zero text messages.",
+     "s": 0
+    },
+    {
+     "t": "Getting a \"we need to talk\" text right as I hit the George Washington Bridge.",
+     "s": 0
+    },
+    {
+     "t": "Hoping the Peterbilt next to me can't hear my sleeper berth rocking rhythmically.",
+     "s": 2
+    },
+    {
+     "t": "Peeing in a Gatorade bottle at 3 AM so I don't lose body heat.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Truck problems and maintenance",
+   "situations": [
+    {
+     "t": "Check engine light returning 40 miles after a $3,200 sensor replacement.",
+     "s": 0
+    },
+    {
+     "t": "Parked on the shoulder at 2 AM, breathing raw soot during a forced regen.",
+     "s": 0
+    },
+    {
+     "t": "Crawling under the trailer with soapy water trying to find a 3-psi air leak.",
+     "s": 0
+    },
+    {
+     "t": "The shop service writer walking toward the waiting room holding a sheared off bolt.",
+     "s": 0
+    },
+    {
+     "t": "Tow bill hit $2,500, meaning my wife's new boyfriend has to buy dinner tonight.",
+     "s": 2
+    },
+    {
+     "t": "Hearing that unmistakable shotgun blast of a virgin Michelin blowing on the drive axle.",
+     "s": 0
+    },
+    {
+     "t": "Fixing a $400 air line problem at the fuel island with three zip ties.",
+     "s": 0
+    },
+    {
+     "t": "Wiping fifth-wheel grease off your favorite jeans with a paper towel and brake cleaner.",
+     "s": 1
+    },
+    {
+     "t": "The DEF gauge suddenly dropping and the dash screaming \"Derate in 50 miles.\"",
+     "s": 0
+    },
+    {
+     "t": "Getting a face full of rusty water while draining the air tanks in winter.",
+     "s": 1
+    },
+    {
+     "t": "Hour four waiting on the shoulder for Love's road assist to bring one super-single.",
+     "s": 0
+    },
+    {
+     "t": "The Thermo King APU rattling the entire sleeper berth like a cheap motel bed.",
+     "s": 1
+    },
+    {
+     "t": "\"We have to order that turbo from PACCAR, it should be here next Tuesday.\"",
+     "s": 0
+    },
+    {
+     "t": "The steer tire vibration shaking my seat so hard I practically need a cigarette.",
+     "s": 2
+    },
+    {
+     "t": "Stepping in a fresh puddle of trucker pee during a 3 AM pre-trip inspection.",
+     "s": 1
+    },
+    {
+     "t": "Tapping the dashboard glass until the ABS warning light finally flickers and turns off.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Gear, tech, apps and the cab",
+   "situations": [
+    {
+     "t": "The safety department watching my driver-facing camera while I sing Shania Twain.",
+     "s": 0
+    },
+    {
+     "t": "Knocking over the full yellow Gatorade bottle in the dark looking for your charger.",
+     "s": 1
+    },
+    {
+     "t": "The Rand McNally GPS confidently routing me down a 5-ton residential dirt road.",
+     "s": 0
+    },
+    {
+     "t": "Tripping the 1500-watt inverter because you ran the microwave and coffee maker together.",
+     "s": 0
+    },
+    {
+     "t": "The Samsara tablet doing a hard reboot with exactly three miles to your exit.",
+     "s": 0
+    },
+    {
+     "t": "The CB radio at 3 AM sounding like a psychiatric ward in Mississippi.",
+     "s": 1
+    },
+    {
+     "t": "Getting the PrePass red light right after you hit 72 in the left lane.",
+     "s": 0
+    },
+    {
+     "t": "Refreshing the DAT board at 5 AM and watching the only good load vanish.",
+     "s": 0
+    },
+    {
+     "t": "Trying to fit two adults on a worn-out twin XL sleeper mattress during hometime.",
+     "s": 2
+    },
+    {
+     "t": "Microwaving a three-day-old Pilot roller dog because you parked at a closed rest area.",
+     "s": 1
+    },
+    {
+     "t": "The BlueParrott headset picking up the Jake brake louder than your actual voice.",
+     "s": 0
+    },
+    {
+     "t": "Making eye contact with the driver-facing camera while changing your underwear in the seat.",
+     "s": 2
+    },
+    {
+     "t": "Trucker Path saying \"Many Spots Available\" at the Love's when it's actually 9 PM.",
+     "s": 0
+    },
+    {
+     "t": "Trusting a roller burrito while bouncing on an air-ride seat through Indianapolis construction.",
+     "s": 1
+    },
+    {
+     "t": "The Thermo King APU throwing a fault code when it's 12 degrees outside.",
+     "s": 0
+    },
+    {
+     "t": "Dumping a trucker bomb out the window at 65 mph and praying for tailwinds.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Money, pay and fuel",
+   "situations": [
+    {
+     "t": "When the 3% factoring fee eats your entire net profit for the week.",
+     "s": 0
+    },
+    {
+     "t": "TA fuel card says 40 cent discount but the pump is 60 cents higher.",
+     "s": 0
+    },
+    {
+     "t": "Seeing the customer paid $4,200 after TQL swore $1,800 was 'all in it'.",
+     "s": 0
+    },
+    {
+     "t": "The shop handing you an $8,500 invoice for an aftertreatment sensor you can't pronounce.",
+     "s": 0
+    },
+    {
+     "t": "Mathing out 10 hours of idle fuel because the bunk heater shit the bed.",
+     "s": 1
+    },
+    {
+     "t": "The 1st of the month hitting and your truck note demanding its blood sacrifice.",
+     "s": 0
+    },
+    {
+     "t": "Deadheading 300 miles unpaid just to grab a reefer load that barely breaks even.",
+     "s": 0
+    },
+    {
+     "t": "Lumper demanding $450 on a Comcheck for sliding four pallets of toilet paper.",
+     "s": 0
+    },
+    {
+     "t": "HVUT 2290 and IRP plates hitting the exact same week your steer tires bald.",
+     "s": 0
+    },
+    {
+     "t": "Finding a dirt-lot stop with diesel 40 cents cheaper than the Pilot.",
+     "s": 0
+    },
+    {
+     "t": "Explaining to your buddy that a $12k gross means your actual take-home is $800.",
+     "s": 0
+    },
+    {
+     "t": "Broker charging 5% for quick pay and still taking 14 days to cut it.",
+     "s": 0
+    },
+    {
+     "t": "Getting a one-cent CPM raise while truck stop roller dogs double in price.",
+     "s": 0
+    },
+    {
+     "t": "Paying $13 at the CAT scale to confirm you're eating a $500 overweight fine.",
+     "s": 0
+    },
+    {
+     "t": "Shitting yourself when bobtail insurance renewal jumps 25% with zero claims this year.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Cost per mile and the math of owning a truck",
+   "situations": [
+    {
+     "t": "Quarterly IFTA hits exactly when the $2,800 truck note auto-drafts.",
+     "s": 0
+    },
+    {
+     "t": "Buying $4,500 virgin Michelins just to catch a drywall screw on day two.",
+     "s": 0
+    },
+    {
+     "t": "Getting raw-dogged by a $1.45 spot rate because the truck note is due.",
+     "s": 2
+    },
+    {
+     "t": "Handing my CPA a urine-scented shoebox of faded Love's receipts and a prayer.",
+     "s": 1
+    },
+    {
+     "t": "Broker: 'It pays $1200.' Me: 'For 900 miles, that doesn't even buy diesel.'",
+     "s": 0
+    },
+    {
+     "t": "$12,000 in-frame rebuild instantly wiping out my entire rainy-day maintenance fund.",
+     "s": 0
+    },
+    {
+     "t": "When the fuel surcharge doesn't cover the 40-cent diesel jump at Pilot.",
+     "s": 0
+    },
+    {
+     "t": "Staring at the pump hitting $900 while doing cost-per-mile math in my head.",
+     "s": 0
+    },
+    {
+     "t": "Grossing $250k on the Schedule C to pay myself exactly $38,200 after expenses.",
+     "s": 0
+    },
+    {
+     "t": "Trying to enjoy home-time intimacy while stressing over the $3,200 balloon payment.",
+     "s": 2
+    },
+    {
+     "t": "Watching the factor take 3% while I survive on gas-station roller dogs.",
+     "s": 1
+    },
+    {
+     "t": "Paying a $450 Comcheck lumper fee on a lane that only nets $300.",
+     "s": 0
+    },
+    {
+     "t": "Looking at a $4.12 settlement check after the mega carrier deducts lease escrow.",
+     "s": 0
+    },
+    {
+     "t": "Pissing in a bottle while calculating the lost revenue of a DEF derate.",
+     "s": 1
+    },
+    {
+     "t": "EZ Pass hitting my account for $140 just to cross the GW Bridge.",
+     "s": 0
+    },
+    {
+     "t": "Deadheading 150 miles at zero CPM just to grab a $2.10 backhaul.",
+     "s": 0
+    },
+    {
+     "t": "The broker keeping a 30% margin while I take all the physical damage risk.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Insurance, taxes and paperwork",
+   "situations": [
+    {
+     "t": "Finding a faded Wyoming Pilot receipt for quarter-end IFTA math.",
+     "s": 0
+    },
+    {
+     "t": "Insurance renewal: +22%. Claims this year: absolute zero.",
+     "s": 0
+    },
+    {
+     "t": "The absolute panic of finding your stamped Form 2290 on August 31st.",
+     "s": 0
+    },
+    {
+     "t": "Doing Schedule C write-offs in the sleeper while wearing nothing but gym shorts.",
+     "s": 1
+    },
+    {
+     "t": "Losing a $3.10 lane because your insurance agent won't email the COI.",
+     "s": 0
+    },
+    {
+     "t": "Receiver refusing the master BOL over a missing digit on the seal number.",
+     "s": 0
+    },
+    {
+     "t": "Calculating 280 days of $69 per diem and feeling rich until the taxes hit.",
+     "s": 0
+    },
+    {
+     "t": "DOT doc clocks your blood pressure at 139/89. Two-year medical card secured.",
+     "s": 0
+    },
+    {
+     "t": "Sneezing a mouthful of roller-dog mustard all over the original signed BOL.",
+     "s": 1
+    },
+    {
+     "t": "Explaining to your wife that IFTA quarter-end stress is entirely killing the bedroom mood.",
+     "s": 2
+    },
+    {
+     "t": "Getting backed into at a TA, and your cargo insurance still jumps 15 percent.",
+     "s": 0
+    },
+    {
+     "t": "FMCSA auditor asking to review six months of logbook edits you swear were legal.",
+     "s": 0
+    },
+    {
+     "t": "Your CPA explaining that a $14,000 engine in-frame isn't the tax shield you thought.",
+     "s": 0
+    },
+    {
+     "t": "Kicking the trucker bomb under the bunk while handing the DOT cop your cab-card.",
+     "s": 1
+    },
+    {
+     "t": "Dropping $1,800 on IRP plates just to haul $1.50 freight for CH Robinson.",
+     "s": 0
+    },
+    {
+     "t": "Getting fully bent over by a 4 percent factoring fee on a net 60.",
+     "s": 2
+    },
+    {
+     "t": "The Clearinghouse random drug test email hitting your phone at 4:30 PM on Friday.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Factoring and getting paid",
+   "situations": [
+    {
+     "t": "Factor rejects the $2,800 invoice because the receiver's signature looks like a sneeze.",
+     "s": 0
+    },
+    {
+     "t": "Day 34 of Net 30 and the broker says the check is in the mail.",
+     "s": 0
+    },
+    {
+     "t": "When Triumph rejects the invoice because the broker's credit just fell off a cliff.",
+     "s": 0
+    },
+    {
+     "t": "Paying 5% for QuickPay just to watch it hit my account six days later.",
+     "s": 0
+    },
+    {
+     "t": "Broker wants original BOLs overnighted via FedEx just to pay a $150 TONU.",
+     "s": 0
+    },
+    {
+     "t": "Getting hit with a $4,000 chargeback because the broker suddenly filed for bankruptcy.",
+     "s": 0
+    },
+    {
+     "t": "Factor acting like a pimp taking 3% while I do all the dirty work.",
+     "s": 2
+    },
+    {
+     "t": "The rare broker who direct-deposits in 48 hours without stealing a 3% cut.",
+     "s": 0
+    },
+    {
+     "t": "Factoring contract says 2%, but the hidden ACH fees make it feel like 5.",
+     "s": 0
+    },
+    {
+     "t": "Taking a 5% QuickPay hit just so I can afford to wipe my ass.",
+     "s": 1
+    },
+    {
+     "t": "Broker claiming they never got the BOL on day 29 of a Net 30.",
+     "s": 0
+    },
+    {
+     "t": "Trying to explain to my wife why the $8,000 reserve account is basically gone.",
+     "s": 0
+    },
+    {
+     "t": "The factor holding my final check hostage because I didn't give 90 days notice.",
+     "s": 0
+    },
+    {
+     "t": "Comcheck charging me a $3.00 fee to access my own $50 lumper advance.",
+     "s": 0
+    },
+    {
+     "t": "When the factoring fee hurts worse than a roller-dog cramp on Donner Pass.",
+     "s": 1
+    },
+    {
+     "t": "Realizing the load was double-brokered and I am never seeing that $3,200.",
+     "s": 0
+    },
+    {
+     "t": "Factor short-pays the invoice because the $250 lumper receipt has a coffee stain.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Buying, financing and lease-purchase",
+   "situations": [
+    {
+     "t": "When that $25,000 lease-purchase balloon payment hits during a freight recession.",
+     "s": 0
+    },
+    {
+     "t": "Getting quoted 19% APR on a used Cascadia because your MC number is new.",
+     "s": 0
+    },
+    {
+     "t": "Holding the clear paper title after 60 months of $2,400 truck notes.",
+     "s": 0
+    },
+    {
+     "t": "The finance manager bending you over for gap insurance on a 400k-mile Peterbilt.",
+     "s": 1
+    },
+    {
+     "t": "Opening a mega-carrier lease-purchase settlement and seeing a cool $38 net for the week.",
+     "s": 0
+    },
+    {
+     "t": "Trying to get your $5,000 maintenance escrow back after leaving a lease-operator program.",
+     "s": 0
+    },
+    {
+     "t": "Wiring a $30k down payment and praying to God the aftertreatment doesn't shit itself.",
+     "s": 1
+    },
+    {
+     "t": "TikTok trucker claiming he bought a W900 cash when his daddy definitely co-signed.",
+     "s": 0
+    },
+    {
+     "t": "Check engine light coming on when you still owe 42 payments on the rig.",
+     "s": 1
+    },
+    {
+     "t": "Waking up with morning wood because you dreamed about a 4% truck loan.",
+     "s": 2
+    },
+    {
+     "t": "Mega-carrier recruiter saying 'Sign this lease-purchase and be your own boss!'",
+     "s": 0
+    },
+    {
+     "t": "Realizing the dealership 'market adjustment' just priced you entirely out of a glider kit.",
+     "s": 0
+    },
+    {
+     "t": "The first truck note hitting your account and making you want to violently vomit.",
+     "s": 1
+    },
+    {
+     "t": "Calculating your real cost per mile after factoring in a predatory 12% interest rate.",
+     "s": 0
+    },
+    {
+     "t": "Finally paying off the truck and popping a stiffy right there at the mailbox.",
+     "s": 2
+    },
+    {
+     "t": "Watching your entire rainy-day fund vanish on an in-frame rebuild month two.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Authority, MC numbers, scams and ghost brokers",
+   "situations": [
+    {
+     "t": "Broker rejecting my setup packet because my MC is 89 days old.",
+     "s": 0
+    },
+    {
+     "t": "\"Dispatch\" email is a Gmail address and the phone line has heavy call-center static.",
+     "s": 0
+    },
+    {
+     "t": "Dock guy says another truck with my cloned MC already picked up the load.",
+     "s": 0
+    },
+    {
+     "t": "Getting a Carrier411 Freight Guard report from a broker I’ve never spoken to.",
+     "s": 0
+    },
+    {
+     "t": "Broker named \"Steve from Dallas\" calling from a Miami VoIP number.",
+     "s": 0
+    },
+    {
+     "t": "Watching a double-broker re-post my active load on DAT for $500 less.",
+     "s": 0
+    },
+    {
+     "t": "Highway flagging my new authority because my selfie didn't match my CDL photo.",
+     "s": 0
+    },
+    {
+     "t": "That ghost broker didn't even buy me dinner before stealing my $3,000 check.",
+     "s": 1
+    },
+    {
+     "t": "Broker texting every four minutes for a clear photo of the stamped BOL.",
+     "s": 0
+    },
+    {
+     "t": "Factor rejecting the rate con because the broker’s MC is four days old.",
+     "s": 0
+    },
+    {
+     "t": "Finding out my \"broker\" was just a 19-year-old double-brokering from his bedroom.",
+     "s": 0
+    },
+    {
+     "t": "Spending my whole 34-hour restart doing IFTA math instead of touching my wife.",
+     "s": 2
+    },
+    {
+     "t": "Scammer emailing a blurry, photoshopped Zelle screenshot as \"Quick Pay confirmation.\"",
+     "s": 0
+    },
+    {
+     "t": "Waking up to twenty pissed-off drivers calling about loads my stolen MC posted.",
+     "s": 1
+    },
+    {
+     "t": "DOT inspector searching my MC like he’s trying to catch me smuggling contraband.",
+     "s": 1
+    },
+    {
+     "t": "Telling a fake broker to take his $1.40 rate and shove it up his authority.",
+     "s": 1
+    },
+    {
+     "t": "My sleeper berth mattress has seen less action than my authority on DAT.",
+     "s": 2
+    }
+   ]
+  },
+  {
+   "domain": "Being your own boss (all the jobs at once)",
+   "situations": [
+    {
+     "t": "Trying to read a faded Pilot fuel receipt from three states ago for IFTA.",
+     "s": 0
+    },
+    {
+     "t": "Refreshing the DAT board at a red light because you're your own terrible dispatcher.",
+     "s": 0
+    },
+    {
+     "t": "Writing yourself a stern safety warning because the DOT audit requires a paper trail.",
+     "s": 0
+    },
+    {
+     "t": "Complaining to HR about the boss, but they're both me and I lack pants.",
+     "s": 1
+    },
+    {
+     "t": "Pissing in a bottle while simultaneously approving a $3,400 injector replacement over Bluetooth.",
+     "s": 1
+    },
+    {
+     "t": "Grossing $12k this week and paying yourself exactly $412 after fuel and factor fees.",
+     "s": 0
+    },
+    {
+     "t": "Wife wants romance, but my brain is entirely focused on paying the HVUT 2290.",
+     "s": 2
+    },
+    {
+     "t": "Doing a parked regen at 2 AM while Googling Kenworth T680 aftertreatment delete cost.",
+     "s": 0
+    },
+    {
+     "t": "The smug satisfaction of telling TQL \"no\" without having to ask a fleet manager.",
+     "s": 0
+    },
+    {
+     "t": "Dropping my quarterly Schedule C envelope into a puddle of mysterious truck stop fluid.",
+     "s": 1
+    },
+    {
+     "t": "Sending a $4,000 IRP check while eating a gas station roller dog for dinner.",
+     "s": 0
+    },
+    {
+     "t": "Paying $150 to a random BOC-3 agent who literally does nothing but exist.",
+     "s": 0
+    },
+    {
+     "t": "\"Six-figure CEO\" but my corporate office smells strongly of stale Fritos and unwashed socks.",
+     "s": 1
+    },
+    {
+     "t": "Denying my own vacation request because the rainy-day maintenance fund went to a turbo.",
+     "s": 0
+    },
+    {
+     "t": "Refreshing the bank app on Friday at 4 PM hoping the broker didn't ghost.",
+     "s": 0
+    },
+    {
+     "t": "Enjoying my \"freedom\" while my prostate screams from 70 hours in the air-ride seat.",
+     "s": 2
+    }
+   ]
+  },
+  {
+   "domain": "Rookies, veterans and trucker culture",
+   "situations": [
+    {
+     "t": "Rookie staring at an 11'8\" bridge because he trusted Google Maps over his Rand McNally.",
+     "s": 0
+    },
+    {
+     "t": "The 30-year veteran diagnosing your turbo leak purely by how you passed him on I-80.",
+     "s": 0
+    },
+    {
+     "t": "The steering-wheel holder stepping into a snowy Wyoming Love's in basketball shorts and flip-flops.",
+     "s": 0
+    },
+    {
+     "t": "Watching a rookie take 14 pull-ups while eating a roller dog in the driver's lounge.",
+     "s": 0
+    },
+    {
+     "t": "Moving a warm, suspiciously yellow Gatorade bottle off the fuel island pump. Thanks, super-trucker.",
+     "s": 1
+    },
+    {
+     "t": "The 2 AM knock in West Memphis from a 'masseuse' missing half her teeth.",
+     "s": 2
+    },
+    {
+     "t": "Listening to a 30-year veteran explain how he managed four paper logbooks back in '98.",
+     "s": 0
+    },
+    {
+     "t": "Staring at the massive hair clump the last driver left in the TA shower drain.",
+     "s": 1
+    },
+    {
+     "t": "Trying to sleep while the Peterbilt next to you is rocking violently at 3 AM.",
+     "s": 2
+    },
+    {
+     "t": "A training-mill rookie trying to explain his lease-purchase trap like he's Warren Buffett.",
+     "s": 0
+    },
+    {
+     "t": "That roller-grill tornado hitting your bowels with 40 miles to the next rest area.",
+     "s": 1
+    },
+    {
+     "t": "Explaining to dispatch why I need a 34-hour restart just to survive my wife's welcome-home.",
+     "s": 2
+    },
+    {
+     "t": "The guy on channel 19 preaching the gospel and playing banjo to a dead interstate.",
+     "s": 0
+    },
+    {
+     "t": "The mega-carrier rookie jake-braking through a Flying J parking lot at 2 in the morning.",
+     "s": 0
+    },
+    {
+     "t": "Opting for a plastic bag in the sleeper because it's minus 10 in North Dakota.",
+     "s": 1
+    },
+    {
+     "t": "Getting the two-finger steering-wheel salute from a chromed-out W900 on a dark two-lane highway.",
+     "s": 0
+    },
+    {
+     "t": "Watching a flatbedder swear at his frozen lumber tarps while I bump the dry-van dock.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Regulations, the ELD and the 14-hour clock",
+   "situations": [
+    {
+     "t": "When the ELD switches to \"Driving\" because the sleeper berth is rocking too hard.",
+     "s": 2
+    },
+    {
+     "t": "Creeping at 4 mph in a traffic jam to keep Samsara in Yard Move.",
+     "s": 0
+    },
+    {
+     "t": "Prairie-dogging yesterday's roller dogs during a surprise Level 1 DOT inspection.",
+     "s": 1
+    },
+    {
+     "t": "Safety department emailing about a \"hard brake\" caused by a suicidal four-wheeler.",
+     "s": 0
+    },
+    {
+     "t": "Exactly 13 minutes left on the 14-hour clock and the Love's lot is packed.",
+     "s": 0
+    },
+    {
+     "t": "Pissing in a Gatorade bottle because stopping ruins the perfect 8/2 split sleeper math.",
+     "s": 1
+    },
+    {
+     "t": "Explaining an 8/2 split sleeper rule to a dispatcher who can barely add.",
+     "s": 0
+    },
+    {
+     "t": "Logging Personal Conveyance just to make it home in time to disappoint the wife.",
+     "s": 2
+    },
+    {
+     "t": "Taking your mandatory 30-minute break at the fuel island and catching pure trucker hatred.",
+     "s": 1
+    },
+    {
+     "t": "When the FMCSA assumes I can schedule my morning dump around my 30-minute break.",
+     "s": 1
+    },
+    {
+     "t": "Crossing a time zone and watching the Omnitracs absolutely ruin your 70-hour math.",
+     "s": 0
+    },
+    {
+     "t": "Running out of drive time while literally staring at the shipper's guard shack.",
+     "s": 0
+    },
+    {
+     "t": "Weigh station open, 4 miles to go, and exactly 6 minutes on the ELD.",
+     "s": 0
+    },
+    {
+     "t": "34-hour restart finishing at 2 AM on a Sunday in nowhere, Nebraska.",
+     "s": 0
+    },
+    {
+     "t": "Watching a desk jockey explain how speed limiters will actually improve my safety.",
+     "s": 0
+    },
+    {
+     "t": "Holding in a violent fart because the DOT officer is checking your Pre-Trip logs.",
+     "s": 1
+    },
+    {
+     "t": "Getting a warning for skipping the scales when the PrePass literally flashed green.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Shippers, receivers and the people at the dock",
+   "situations": [
+    {
+     "t": "Guard shack guy guarding 40,000 pounds of toilet paper like it's Fort Knox.",
+     "s": 0
+    },
+    {
+     "t": "Lumper wanting $450 via Comcheck for a pallet that slid three inches.",
+     "s": 0
+    },
+    {
+     "t": "Holding a nuclear morning dump because the shipper's bathroom says \"Employees Only\".",
+     "s": 1
+    },
+    {
+     "t": "Forklift driver goes on a 90-minute lunch with two pallets left to load.",
+     "s": 0
+    },
+    {
+     "t": "Receiver hands back the BOL missing the one signature that gets me paid.",
+     "s": 0
+    },
+    {
+     "t": "Yard jockey dropping an empty on door 14 right while I'm setting up.",
+     "s": 0
+    },
+    {
+     "t": "105 degrees out and the shipper's \"driver lounge\" is a blue plastic sauna.",
+     "s": 1
+    },
+    {
+     "t": "Scaling out at 80,080 lbs because the loader put everything on the drives.",
+     "s": 0
+    },
+    {
+     "t": "Receiver says \"pull into my slip\", but I prefer a little romance first.",
+     "s": 2
+    },
+    {
+     "t": "Dock worker staring at my swinging doors like he's never seen a dry van.",
+     "s": 0
+    },
+    {
+     "t": "Banging on the shipping office glass while three guys inside just stare at me.",
+     "s": 0
+    },
+    {
+     "t": "Forklift driver actually handing me my paperwork and an ice-cold bottle of water.",
+     "s": 0
+    },
+    {
+     "t": "Guard snipping the bolt seal before I even write the number on the BOL.",
+     "s": 0
+    },
+    {
+     "t": "Arriving at 0745 for an 0800 appointment and the gate is padlocked until 0900.",
+     "s": 0
+    },
+    {
+     "t": "Finding my assigned empty trailer has a dead reefer and two bald recaps.",
+     "s": 0
+    },
+    {
+     "t": "Lumper asking for cash instead of a T-Chek, winking like a drug deal.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "The CB, radio, music, podcasts and audiobooks",
+   "situations": [
+    {
+     "t": "The one super-trucker on channel 19 broadcasting his entire divorce to the fuel island.",
+     "s": 0
+    },
+    {
+     "t": "Finishing a 45-hour audiobook in Wyoming and still having two days to California.",
+     "s": 0
+    },
+    {
+     "t": "SiriusXM Road Dog looping the same guy complaining about parking for three hours straight.",
+     "s": 0
+    },
+    {
+     "t": "True crime podcast detailing a rest-stop killer right as you park at midnight.",
+     "s": 0
+    },
+    {
+     "t": "Spicy romance audiobook blasting over Bluetooth just as the scale master walks up.",
+     "s": 2
+    },
+    {
+     "t": "Guy on channel 19 broadcasting exactly what the TA buffet did to his bowels.",
+     "s": 1
+    },
+    {
+     "t": "Listening to a 'freight broker secrets' podcast while hauling water for $1.40 a mile.",
+     "s": 0
+    },
+    {
+     "t": "Calling your trucker buddy and driving 400 miles in complete, comfortable Bluetooth silence.",
+     "s": 0
+    },
+    {
+     "t": "Losing the local country station right at the punchline somewhere outside North Platte.",
+     "s": 0
+    },
+    {
+     "t": "Screaming 80s rock at the windshield to survive the last 20 miles into Chicago.",
+     "s": 0
+    },
+    {
+     "t": "Someone actually calling out the Smokey at mile marker 112 instead of just complaining.",
+     "s": 0
+    },
+    {
+     "t": "Leaving the CB on and hearing a guy heavy breathing for forty straight miles.",
+     "s": 1
+    },
+    {
+     "t": "Listening to a self-help podcast about boundaries while actively crop-dusting the fuel desk.",
+     "s": 1
+    },
+    {
+     "t": "Wife talking dirty on the BlueParrott right as you order a Pilot roller dog.",
+     "s": 2
+    },
+    {
+     "t": "CB super-trucker challenging someone to a fight at a scale we passed hours ago.",
+     "s": 0
+    },
+    {
+     "t": "Filling a trucker bomb while Joe Rogan talks about ice baths and optimal health.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Small wins and pride",
+   "situations": [
+    {
+     "t": "Sliding the tandems once and the CAT scale says 33,980 on the drives.",
+     "s": 0
+    },
+    {
+     "t": "Passing a Level 1 DOT inspection and watching them scrape the old CVSA sticker.",
+     "s": 0
+    },
+    {
+     "t": "Making the Love's toilet with three seconds to spare after that jalapeño Rollerbite.",
+     "s": 1
+    },
+    {
+     "t": "3 AM on I-80, cruise set at 70, and dead silence on the CB.",
+     "s": 0
+    },
+    {
+     "t": "Home time Friday means the Mrs. answers the door wearing only my favorite hoodie.",
+     "s": 2
+    },
+    {
+     "t": "When the PrePass flashes green while the scale line backs up onto the highway.",
+     "s": 0
+    },
+    {
+     "t": "Hitting the dock perfectly on the first try while three flatbedders are watching.",
+     "s": 0
+    },
+    {
+     "t": "Realizing the Pilot shower has boiling water and zero mystery hairs on the tile.",
+     "s": 1
+    },
+    {
+     "t": "A live unload that actually takes fifteen minutes and they hand you signed paperwork.",
+     "s": 0
+    },
+    {
+     "t": "Wife riding along and the roaring reefer unit perfectly hides the sleeper berth noises.",
+     "s": 2
+    },
+    {
+     "t": "Pulling off at 7 PM and spotting one empty parking spot between two Peterbilts.",
+     "s": 0
+    },
+    {
+     "t": "Finally overtaking the guy doing 62.5 MPH and cutting off his high beams.",
+     "s": 1
+    },
+    {
+     "t": "Telling a TQL broker \"my CPM is $2.50\" and hearing them actually agree.",
+     "s": 0
+    },
+    {
+     "t": "Skipping the Pilot shower because the wife promised a much better scrub at home.",
+     "s": 2
+    },
+    {
+     "t": "Eating three TA roller dogs at 2 AM and waking up with solid bowels.",
+     "s": 1
+    },
+    {
+     "t": "Quarter-end books balance perfectly and the truck didn't throw a single check-engine light.",
+     "s": 0
+    },
+    {
+     "t": "When the shipper bathroom doesn't say \"employees only\" and actually has two-ply toilet paper.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Truck stop characters and chaos",
+   "situations": [
+    {
+     "t": "Guy washing his entire Peterbilt with the single Love's fuel island squeegee.",
+     "s": 0
+    },
+    {
+     "t": "Dodging a warm yellow Gatorade bottle rolling across the Petro parking lot.",
+     "s": 1
+    },
+    {
+     "t": "When the CB Rambo threatens a fight but refuses to name his parking spot.",
+     "s": 0
+    },
+    {
+     "t": "Stepping barefoot into the TA shower stall and feeling a mysterious slimy texture.",
+     "s": 1
+    },
+    {
+     "t": "Hearing a suspicious rhythmic rocking from the Cascadia parked right next to you.",
+     "s": 2
+    },
+    {
+     "t": "The super trucker explaining double-clutching while holding up the Subway line.",
+     "s": 0
+    },
+    {
+     "t": "Finding a 9 PM spot but there's a dropped Swift trailer taking two spaces.",
+     "s": 0
+    },
+    {
+     "t": "The guy taking his 30-minute break directly in front of the diesel pump.",
+     "s": 0
+    },
+    {
+     "t": "That soft 2 AM knock on your sleeper doors at the West Memphis Petro.",
+     "s": 2
+    },
+    {
+     "t": "Pilot jalapeño cheese roller-dog regrets hitting your lower intestine at 3 AM.",
+     "s": 1
+    },
+    {
+     "t": "Watching a rookie do twenty pull-ups for a straight-line back at Love's.",
+     "s": 0
+    },
+    {
+     "t": "The guy brushing his teeth and spitting into the truck stop coffee sink.",
+     "s": 1
+    },
+    {
+     "t": "When the reefer beside you kicks into high idle just as you fall asleep.",
+     "s": 0
+    },
+    {
+     "t": "Heavy breathing and 'any ladies out there?' echoing across CB channel 19.",
+     "s": 2
+    },
+    {
+     "t": "Making awkward eye contact through the two-inch gap in the TA bathroom stall.",
+     "s": 1
+    },
+    {
+     "t": "The veteran parallel parking his long-hood W900 in one smooth, fluid motion.",
+     "s": 0
+    },
+    {
+     "t": "Waiting behind a guy buying $200 in scratch-offs while your 14-hour ticks down.",
+     "s": 0
+    }
+   ]
+  },
+  {
+   "domain": "Holidays, birthdays and missing things",
+   "situations": [
+    {
+     "t": "Thanksgiving dinner is two roller dogs and a Mountain Dew somewhere in Nebraska.",
+     "s": 0
+    },
+    {
+     "t": "Watching my kid’s school play on a shaky FaceTime over Wyoming truck-stop Wi-Fi.",
+     "s": 0
+    },
+    {
+     "t": "First day of home time: trying to make up for 21 days of celibacy.",
+     "s": 2
+    },
+    {
+     "t": "Waking up in a rattling sleeper berth on Christmas morning to a Qualcomm beep.",
+     "s": 0
+    },
+    {
+     "t": "Blaming my missed anniversary call on a dead zone halfway up the Donner Pass.",
+     "s": 0
+    },
+    {
+     "t": "Spouse wants a marathon reunion, but I’ve been driving 11 hours and need sleep.",
+     "s": 2
+    },
+    {
+     "t": "Spending the first 24 hours of home time just sleeping and mowing the lawn.",
+     "s": 0
+    },
+    {
+     "t": "Broker: 'Delivers Christmas morning, normal rate.' Me: 'Then it’s sitting in my driveway.'",
+     "s": 0
+    },
+    {
+     "t": "Buying my wife’s birthday present from the premium electronics aisle at an Ohio Pilot.",
+     "s": 1
+    },
+    {
+     "t": "Finally using a shower that doesn’t require shower shoes, and bringing my wife along.",
+     "s": 2
+    },
+    {
+     "t": "When that Thanksgiving TA buffet hits exactly 30 miles from the next rest area.",
+     "s": 1
+    },
+    {
+     "t": "Dog losing his mind at the air brakes while my teenagers barely look up.",
+     "s": 0
+    },
+    {
+     "t": "Watching minivans packed with holiday luggage while hauling 40,000 pounds of toilet paper.",
+     "s": 0
+    },
+    {
+     "t": "Celebrating the Fourth of July by absolutely destroying a Love's bathroom stall in Texas.",
+     "s": 1
+    },
+    {
+     "t": "Celebrating my tenth wedding anniversary by eating an Iron Skillet steak over FaceTime.",
+     "s": 0
+    },
+    {
+     "t": "Dispatch sending a 'Happy Thanksgiving' fleet message right after forcing a 700-mile deadhead.",
+     "s": 1
+    },
+    {
+     "t": "Opening the cab after four days home and smelling stale diesel and trucker bombs.",
+     "s": 1
+    }
+   ]
+  },
+  {
+   "domain": "Group chats, social media and trucker influencers",
+   "situations": [
+    {
+     "t": "TikTok trucker claiming he clears $300k in a lease-purchase Cascadia.",
+     "s": 0
+    },
+    {
+     "t": "Dropping a picture of a destroyed Flying J toilet into the boys' group chat.",
+     "s": 1
+    },
+    {
+     "t": "The Facebook veteran answering a simple IRP question with \"turn in your keys.\"",
+     "s": 0
+    },
+    {
+     "t": "Roasting the buddy in group chat who gambled on a roller dog and lost.",
+     "s": 1
+    },
+    {
+     "t": "TikToker selling a \"dispatch masterclass\" who doesn't even know what a BOC-3 is.",
+     "s": 0
+    },
+    {
+     "t": "WhatsApp blowing up because Smokey has a level 1 set up on I-40 westbound.",
+     "s": 0
+    },
+    {
+     "t": "Leaving an unhinged Google review because the shipper's port-a-john hasn't been pumped since August.",
+     "s": 1
+    },
+    {
+     "t": "\"Be your own boss\" Instagram reel ignoring the $4,500 IFTA bill due tomorrow.",
+     "s": 0
+    },
+    {
+     "t": "Influencer showing off custom Peterbilt chrome while secretly hauling $1.30 per mile broker freight.",
+     "s": 0
+    },
+    {
+     "t": "Spotting a yellow trucker bomb during an influencer's flawless sleeper berth TikTok tour.",
+     "s": 1
+    },
+    {
+     "t": "Sending the group chat a photo of your $8,000 in-frame repair estimate.",
+     "s": 0
+    },
+    {
+     "t": "Trucker wife posting thirsty reunion TikToks while you're stuck at a Greeley meat plant.",
+     "s": 2
+    },
+    {
+     "t": "The guy streaming his screaming match with a TQL broker on Facebook Live.",
+     "s": 0
+    },
+    {
+     "t": "When the group chat goes completely silent after you post your $2.10 CPM spreadsheet.",
+     "s": 0
+    },
+    {
+     "t": "Influencer giving winter mountain driving advice from a sunny driveway in Florida.",
+     "s": 0
+    }
+   ]
+  }
+ ]
+}

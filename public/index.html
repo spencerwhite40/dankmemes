@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meme Builder</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Meme Builder</h1>
+    <button id="logout" class="link" hidden>Sign out</button>
+  </header>
+
+  <main>
+    <!-- Sign in (only shown when a password is set) -->
+    <section id="login" class="card" hidden>
+      <h2>Sign in</h2>
+      <form id="login-form">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit">Sign in</button>
+      </form>
+      <p id="login-error" class="error" role="alert"></p>
+    </section>
+
+    <!-- The whole flow -->
+    <div id="app" hidden>
+      <section class="card">
+        <h2>1. Who is it for?</h2>
+        <select id="persona" aria-label="Audience"></select>
+      </section>
+
+      <section class="card">
+        <h2>2. Pick a video</h2>
+        <input id="file" type="file" accept="video/*" aria-label="Video file">
+        <div class="or">or use one you already uploaded</div>
+        <select id="previous" aria-label="Previous video"><option value="">None</option></select>
+        <button id="make" type="button">Make clips</button>
+        <progress id="upload-bar" max="100" value="0" hidden></progress>
+        <p id="make-error" class="error" role="alert"></p>
+      </section>
+
+      <section id="run" class="card" hidden>
+        <h2 id="run-title">Working…</h2>
+        <ol id="steps"></ol>
+        <p id="run-status" class="muted" aria-live="polite"></p>
+        <div id="notes"></div>
+        <button id="retry" type="button" hidden>Try again</button>
+      </section>
+
+      <section id="clips-wrap" hidden>
+        <h2 id="clips-title">Clips</h2>
+        <div id="clips" class="grid"></div>
+      </section>
+
+      <section class="card">
+        <h2>Recent runs</h2>
+        <ul id="recent" class="recent"></ul>
+      </section>
+    </div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

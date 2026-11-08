@@ -1,0 +1,19 @@
+# Fly.io config for the PROCESSING machine (runner only, no web server).
+# First time:   fly launch --no-deploy --copy-config --name <your-app-name>
+# Secrets (type these yourself, never in chat or in git):
+#   fly secrets set DATABASE_URL=... KIE_API_KEY=... R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... R2_BUCKET=...
+# Deploy:       fly deploy
+# On the web app set MEME_BUILDER_RUNNER=off so only this machine processes jobs.
+app = "dankmemes-worker"
+primary_region = "iad"          # pick the region closest to your database
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  worker = "npm run worker"
+
+[[vm]]
+  processes = ["worker"]
+  size = "performance-2x"       # video encoding is CPU-bound; shared cores are slow for this
+  memory = "4gb"
