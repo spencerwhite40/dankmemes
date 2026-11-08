@@ -58,7 +58,8 @@ async function getKeyById(pool, id) {
 
 /** One finished run's usage: the minutes of video it processed and the clips it made. */
 async function recordUsage(pool, job, clipCount) {
-  const seconds = job && job.video_meta && Number(job.video_meta.duration) ? Number(job.video_meta.duration) : 0;
+  const length = job && job.video_meta && Number(job.video_meta.duration) ? Number(job.video_meta.duration) : 0;
+  const seconds = Math.ceil(length / 60) * 60;   // billed in whole minutes: a 61-second video is 2 minutes
   await pool.query(
     "insert into usage_events (owner_id, api_key_id, job_id, source_seconds, clips) values ($1, $2, $3, $4, $5)",
     [job.owner_id, job.api_key_id || null, job.id, seconds, clipCount || 0],

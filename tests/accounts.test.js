@@ -22,6 +22,21 @@ describe("plans and passwords (no database)", () => {
     assert.equal(PLANS.free.apiAccess, false); assert.equal(PLANS.creator.apiAccess, true);
     assert.equal(PLANS.free.models, "standard"); assert.equal(PLANS.pro.models, "premium");
   });
+  test("prices: no paid plan sells a minute below the floor, annual is a slight discount, and bigger plans never cost more per minute", () => {
+    const FLOOR = 0.15;   // dollars per minute, month-to-month
+    const paid = ["creator", "pro", "agency"];
+    assert.equal(PLANS.free.priceMonthly, 0); assert.equal(PLANS.free.priceAnnual, 0);
+    let previous = Infinity;
+    for (const n of paid) {
+      const p = PLANS[n], perMinute = p.priceMonthly / p.monthlyMinutes;
+      assert.ok(perMinute >= FLOOR - 1e-9, `${n} monthly is ${perMinute.toFixed(3)} a minute`);
+      assert.ok(perMinute <= previous + 1e-9, `${n} is not dearer per minute than a smaller plan`);
+      previous = perMinute;
+      const off = 1 - p.priceAnnual / p.priceMonthly;
+      assert.ok(off > 0.1 && off <= 0.2, `${n} annual discount is ${(off * 100).toFixed(1)}%`);
+    }
+    assert.equal(PLANS.creator.priceMonthly, 30); assert.equal(PLANS.creator.monthlyMinutes, 200);
+  });
   test("an unknown plan name falls back to free, never to unlimited", () => {
     assert.equal(getPlan("nope").name, "free"); assert.equal(getPlan(undefined).maxUploadMb, PLANS.free.maxUploadMb);
   });
@@ -218,6 +233,21 @@ describe("accounts against a real database", { skip: !DB && "DATABASE_URL_TEST i
       assert.ok(await accounts.assertCanStart(pool, u.id, { fileBytes: 10 * 1024 * 1024 }));
       await pool.query("insert into meme_builder_jobs (owner_id, persona_id, source_kind, source_label, status, source_bytes) values ($1, 'truckers', 'upload', 'big', 'done', $2)", [u.id, PLANS.free.storageGb * GB - 100]);
       await assert.rejects(() => accounts.assertCanStart(pool, u.id, { fileBytes: 1000 }), (e) => e.code === "storage_full" && /Delete old runs/.test(e.message));
+    });
+    test("minutes do not roll over: last month's usage doesn't count this month, and nothing carries forward", async () => {
+      const u = await mk("rollover", "creator");
+      await pool.query("insert into usage_events (owner_id, source_seconds, clips, created_at) values ($1, $2, 3, date_trunc('month', now() at time zone 'utc') at time zone 'utc' - interval '1 day')", [u.id, PLANS.creator.monthlyMinutes * 60]);
+      let snap = await accounts.usageSnapshot(pool, u.id);
+      assert.equal(snap.usage.minutes, 0, "a full month last month leaves nothing used this month");
+      assert.equal(snap.limits.monthly_minutes, PLANS.creator.monthlyMinutes, "and nothing extra either, even if last month's minutes were never used");
+      await pool.query("insert into usage_events (owner_id, source_seconds, clips) values ($1, $2, 3)", [u.id, PLANS.creator.monthlyMinutes * 60]);
+      await assert.rejects(() => accounts.assertCanStart(pool, u.id), { code: "quota_exceeded", status: 402 });
+    });
+    test("a finished run is billed in whole minutes, rounded up", async () => {
+      const u = await mk("whole-min", "creator");
+      const job = (await createRun(pool, { ownerId: u.id }, { personaId: "truckers", sourceUrl: "https://8.8.8.8/w.mp4" })).job;
+      await require("../src/lib/keys").recordUsage(pool, { ...job, video_meta: { duration: 61 } }, 4);
+      assert.equal((await accounts.usageSnapshot(pool, u.id)).usage.minutes, 2, "61 seconds is 2 minutes");
     });
     test("clips per run are capped by the plan, whatever was asked for", async () => {
       const f = await mk("cap-f"), p = await mk("cap-p", "pro");

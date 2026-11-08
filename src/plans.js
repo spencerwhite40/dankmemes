@@ -3,7 +3,10 @@
 // The numbers are starting points, not decisions: edit them here and every limit in the app follows.
 // (Prices and billing are not in the app yet: an admin sets a user's plan. See docs/accounts.md.)
 //
-//   monthlyMinutes   minutes of source video processed per calendar month (UTC)
+//   monthlyMinutes   minutes of source video processed per calendar month (UTC). A run counts the length of the video it
+//                    was given, rounded up; unused minutes do not roll over to the next month
+//   priceMonthly     dollars per month when paid month by month
+//   priceAnnual      dollars per month when paid once a year (slightly less); 0 on the free plan
 //   maxVideoMinutes  longest single video
 //   maxUploadMb      largest single upload
 //   storageGb        all stored videos and clips together
@@ -15,10 +18,10 @@
 //   models           "standard" uses the cheaper models only; "premium" uses the best available
 //   clipsPerRun      most clips one run may make
 const PLANS = {
-  free:    { label: "Free",    monthlyMinutes: 10,   maxVideoMinutes: 10,  maxUploadMb: 200,  storageGb: 1,   retentionDays: 14,  concurrentRuns: 1, apiAccess: false, ratePerMin: 30,  tasteExamples: 5,  models: "standard", clipsPerRun: 12 },
-  creator: { label: "Creator", monthlyMinutes: 200,  maxVideoMinutes: 30,  maxUploadMb: 500,  storageGb: 20,  retentionDays: 90,  concurrentRuns: 2, apiAccess: true,  ratePerMin: 120, tasteExamples: 15, models: "premium",  clipsPerRun: 30 },
-  pro:     { label: "Pro",     monthlyMinutes: 700,  maxVideoMinutes: 60,  maxUploadMb: 1000, storageGb: 100, retentionDays: 180, concurrentRuns: 4, apiAccess: true,  ratePerMin: 300, tasteExamples: 30, models: "premium",  clipsPerRun: 60 },
-  agency:  { label: "Agency",  monthlyMinutes: 2500, maxVideoMinutes: 120, maxUploadMb: 2000, storageGb: 500, retentionDays: 365, concurrentRuns: 8, apiAccess: true,  ratePerMin: 600, tasteExamples: 50, models: "premium",  clipsPerRun: 60 },
+  free:    { label: "Free",    monthlyMinutes: 5,    priceMonthly: 0,   priceAnnual: 0,     maxVideoMinutes: 5,   maxUploadMb: 200,  storageGb: 1,   retentionDays: 14,  concurrentRuns: 1, apiAccess: false, ratePerMin: 30,  tasteExamples: 5,  models: "standard", clipsPerRun: 12 },
+  creator: { label: "Creator", monthlyMinutes: 200,  priceMonthly: 30,  priceAnnual: 25.5,  maxVideoMinutes: 30,  maxUploadMb: 500,  storageGb: 20,  retentionDays: 90,  concurrentRuns: 2, apiAccess: true,  ratePerMin: 120, tasteExamples: 15, models: "premium",  clipsPerRun: 30 },
+  pro:     { label: "Pro",     monthlyMinutes: 600,  priceMonthly: 90,  priceAnnual: 76.5,  maxVideoMinutes: 60,  maxUploadMb: 1000, storageGb: 100, retentionDays: 180, concurrentRuns: 4, apiAccess: true,  ratePerMin: 300, tasteExamples: 30, models: "premium",  clipsPerRun: 60 },
+  agency:  { label: "Agency",  monthlyMinutes: 2000, priceMonthly: 300, priceAnnual: 255,   maxVideoMinutes: 120, maxUploadMb: 2000, storageGb: 500, retentionDays: 365, concurrentRuns: 8, apiAccess: true,  ratePerMin: 600, tasteExamples: 50, models: "premium",  clipsPerRun: 60 },
 };
 
 const DEFAULT_PLAN = "free";

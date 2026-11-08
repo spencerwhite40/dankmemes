@@ -18,7 +18,8 @@ The limits live in one file, `src/plans.js`, and every limit in the app follows 
 
 | Limit | What it controls |
 |---|---|
-| `monthlyMinutes` | minutes of source video processed per calendar month (UTC) |
+| `monthlyMinutes` | minutes of source video processed per calendar month (UTC). Counts the length of each video submitted, rounded up. Unused minutes do not roll over |
+| `priceMonthly`, `priceAnnual` | dollars per month, paid monthly or yearly (the yearly price is the slight discount). Not charged by the app yet |
 | `maxVideoMinutes` | longest single video |
 | `maxUploadMb` | largest single upload |
 | `storageGb` | all of an account's stored videos and clips together |
