@@ -23,7 +23,7 @@ cp .env.example .env     # fill in DATABASE_URL, KIE_API_KEY, APP_PASSWORD, SESS
 npm install
 npm run migrate          # tables are also created on boot
 npm start                # http://localhost:3000
-npm test
+npm test               # the API integration tests also run when DATABASE_URL_TEST points at a scratch Postgres
 ```
 
 Local runs and tests use `DATABASE_URL_TEST` when it is set, so they can't touch a production database.
@@ -36,6 +36,11 @@ Everything heavy (shrinking video, rendering) happens in the runner. By default 
 - Run `npm run worker` on the faster machine (see `fly.toml` / `Dockerfile`), with the same `DATABASE_URL`, R2 and
   model keys. Jobs are claimed from Postgres with `FOR UPDATE SKIP LOCKED`, so any number of workers can run at once.
 
+## API
+
+A versioned public API (API keys, per-customer isolation, usage, expiring playback links, webhooks) is documented in
+[docs/api.md](docs/api.md). The web page and the API run the same code.
+
 ## Layout
 
 ```
@@ -45,6 +50,9 @@ src/routes.js      the API
 src/worker.js      the job runner (claims queued jobs, retries, watchdog)
 src/run-worker.js  runner only, for a separate machine
 src/auth.js        one shared password (APP_PASSWORD) and a signed cookie
+src/v1.js          the public API (API-key auth)
+src/intake.js      starting a run (shared by the page and the API)
+src/webhooks.js    signed run-finished callbacks
 src/lib/           the pipeline: analyze, captions, refine, cuts, render, media, storage, store, personas, kie (model client)
 src/lib/presets/   built-in audiences (truckers: profile + situation bank)
 schema.sql         database tables

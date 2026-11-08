@@ -33,3 +33,8 @@ progress { width:100%; }
 .recent { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
 .recent button { width:100%; text-align:left; background:var(--bg); color:var(--fg); border:1px solid var(--line); font-weight:400; display:flex; justify-content:space-between; gap:8px; }
 .recent .st { color:var(--muted); font-size:13px; white-space:nowrap; }
+
+details.card summary { cursor:pointer; }
+.keyform { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
+.keyform input { padding:10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--fg); font:inherit; }
+#key-new { white-space:pre-wrap; word-break:break-all; font-family:ui-monospace,Menlo,monospace; }

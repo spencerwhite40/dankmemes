@@ -52,3 +52,40 @@ create table if not exists meme_builder_clips (
 );
 create index if not exists meme_builder_clips_job_idx on meme_builder_clips (job_id, n);
 create index if not exists meme_builder_clips_persona_idx on meme_builder_clips (persona_id, created_at desc);
+
+-- ── Ownership, API keys and usage ──────────────────────────────────────────
+-- Every run belongs to an owner (a customer). The web page is owner 'default'; each API key belongs to one owner.
+-- Added with ALTER ... IF NOT EXISTS plus the backfill, all in this one multi-statement query.
+alter table meme_builder_jobs add column if not exists owner_id text;
+alter table meme_builder_jobs add column if not exists api_key_id uuid;
+update meme_builder_jobs set owner_id = 'default' where owner_id is null;
+alter table meme_builder_jobs alter column owner_id set default 'default';
+alter table meme_builder_jobs alter column owner_id set not null;
+create index if not exists meme_builder_jobs_owner_idx on meme_builder_jobs (owner_id, created_at desc);
+alter table meme_builder_personas add column if not exists owner_id text;
+
+create table if not exists api_keys (
+  id                    uuid primary key default gen_random_uuid(),
+  owner_id              text not null,
+  name                  text not null,
+  key_hash              text not null unique,
+  key_prefix            text not null,
+  webhook_secret        text not null,
+  rate_limit_per_min    integer not null default 120,
+  monthly_minutes_quota numeric,
+  created_at            timestamptz not null default now(),
+  last_used_at          timestamptz,
+  revoked_at            timestamptz
+);
+create index if not exists api_keys_owner_idx on api_keys (owner_id);
+
+create table if not exists usage_events (
+  id             uuid primary key default gen_random_uuid(),
+  owner_id       text not null,
+  api_key_id     uuid,
+  job_id         uuid,
+  source_seconds numeric not null default 0,
+  clips          integer not null default 0,
+  created_at     timestamptz not null default now()
+);
+create index if not exists usage_events_owner_idx on usage_events (owner_id, created_at desc);

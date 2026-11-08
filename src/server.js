@@ -10,6 +10,8 @@ const { requireLogin, registerAuthRoutes } = require("./auth");
 const { registerMemeBuilderRoutes } = require("./routes");
 const { startMemeBuilderWorker } = require("./worker");
 const { asyncRoute } = require("./async-route");
+const { buildV1 } = require("./v1");
+const { registerKeyAdminRoutes } = require("./admin-keys");
 
 
 function buildApp(pool) {
@@ -21,6 +23,8 @@ function buildApp(pool) {
   app.get("/health", (_req, res) => res.json({ ok: true }));
   registerAuthRoutes(app);
   registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: requireLogin });
+  registerKeyAdminRoutes(app, { pool, asyncRoute, requireAdmin: requireLogin });
+  app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 
   app.use(express.static(path.join(__dirname, "..", "public")));
   // JSON errors for the API, so the page can show a plain message.

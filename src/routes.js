@@ -33,44 +33,15 @@ const store = require("./lib/store");
 const storage = require("./lib/storage");
 const media = require("./lib/media");
 const { expandPersona, customPersonaId, isPresetId } = require("./lib/personas");
-const { cleanCaption, regenerateCaption } = require("./lib/captions");
-const { tasteFromRatings } = require("./lib/personas");
+const { cleanCaption } = require("./lib/captions");
 const { KieError, friendlyMessage } = require("./lib/kie");
-const { notifyJobQueued } = require("./lib/queue-signal");
-const { rerenderClip } = require("./lib/pipeline");
+const { createRun, rerun, parseOptions } = require("./intake");
+const { findMoment, applyCaption, regenerate, streamClipVideo } = require("./clips");
+const { HttpError } = require("./errors");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_UPLOAD_MB = () => Number(process.env.MEME_BUILDER_MAX_UPLOAD_MB || 500);
 const BASE = "/api";
-
-const clampInt = (v, lo, hi, d) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d;
-};
-
-/** Normalise the per-run options an admin can set. */
-function parseOptions(body) {
-  const o = {};
-  if (body.minScore !== undefined && body.minScore !== "") o.minScore = clampInt(body.minScore, 1, 10, 1);
-  if (body.maxClips !== undefined && body.maxClips !== "") o.maxClips = clampInt(body.maxClips, 1, 60, 30);
-  return o;
-}
-
-/** The analysis moment a clip came from (nearest midpoint within 20s), or a minimal stand-in built from the clip itself. Pure. */
-function findMoment(analysis, clip) {
-  const start = Number(clip.start_sec), end = Number(clip.end_sec);
-  const mid = (start + end) / 2;
-  let best = null, bestD = Infinity;
-  for (const m of Array.isArray(analysis) ? analysis : []) {
-    const d = Math.abs((m.startSec + m.endSec) / 2 - mid);
-    if (d < bestD) { best = m; bestD = d; }
-  }
-  if (best && bestD <= 20) return { ...best, startSec: start, endSec: end };
-  return {
-    id: "m1", kind: end - start >= 15 ? "bit" : "reaction", startSec: start, endSec: end, transcript: clip.transcript || "",
-    context: "", emotion: clip.emotion || "", delivery: "", reaction_use: clip.why || "",
-  };
-}
 
 const userIdOf = (req) => (req.admin && req.admin.id && req.admin.id !== "env-admin" ? req.admin.id : null);
 
@@ -84,6 +55,12 @@ function clipJson(c) {
 }
 
 function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requirePermission }) {
+  // The web page acts as the "default" owner; API customers each have their own, so their runs never show up here.
+  const OWNER = { ownerId: "default" };
+  // Like asyncRoute, but a deliberate HttpError becomes a JSON answer with its status.
+  const safe = (fn) => asyncRoute(async (req, res, next) => {
+    try { await fn(req, res, next); } catch (e) { if (e instanceof HttpError) return res.status(e.status).json({ error: e.message, code: e.code }); throw e; }
+  });
   const canView = requirePermission ? requirePermission("email_outreach.settings", "view") : requireAdmin;
   const canEdit = requirePermission ? requirePermission("email_outreach.settings", "edit") : requireAdmin;
 
@@ -105,19 +82,9 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     return req.params.id;
   };
 
-  // Burn a new caption into a clip: re-render from the stored source, swap the file, update the row.
-  async function applyCaption(clip, caption) {
-    const newUri = await rerenderClip(pool, clip, caption);
-    const oldUri = clip.storage_uri;
-    await pool.query("update public.meme_builder_clips set storage_uri = $2 where id = $1", [clip.id, newUri]);
-    const updated = await store.updateClipCaption(pool, clip.id, caption);
-    await storage.remove(oldUri).catch(() => {});
-    return updated;
-  }
-
   // ── Audiences ──────────────────────────────────────────────────────────
   app.get("/api/personas", canView, asyncRoute(async (_req, res) => {
-    res.json({ personas: await store.listPersonas(pool) });
+    res.json({ personas: await store.listPersonas(pool, OWNER.ownerId) });
   }));
 
   app.post("/api/personas", canEdit, asyncRoute(async (req, res) => {
@@ -144,50 +111,26 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     // Editing keeps the id; a brand-new audience gets one from its name (never a built-in's id).
     const id = typeof persona.id === "string" && persona.id && !isPresetId(persona.id) ? persona.id : customPersonaId(name);
     const { id: _i, preset: _p, created_at: _c, updated_at: _u, ...data } = persona;
-    res.json({ persona: await store.savePersona(pool, { id, name, data: { ...data, name }, userId: userIdOf(req) }) });
+    res.json({ persona: await store.savePersona(pool, { id, name, data: { ...data, name }, userId: userIdOf(req), ownerId: OWNER.ownerId }) });
   }));
 
   app.delete("/api/personas/:id", canEdit, asyncRoute(async (req, res) => {
     if (isPresetId(req.params.id)) return res.status(400).json({ error: "Built-in audiences can't be deleted." });
-    const ok = await store.deletePersona(pool, req.params.id);
+    const ok = await store.deletePersona(pool, req.params.id, OWNER.ownerId);
     return ok ? res.json({ ok: true }) : res.status(404).json({ error: "not found" });
   }));
 
   // ── Jobs ───────────────────────────────────────────────────────────────
   app.get("/api/jobs", canView, asyncRoute(async (_req, res) => {
     // `storage` lets the page warn when files are on the server's temporary disk instead of R2.
-    res.json({ jobs: await store.listJobs(pool), storage: storage.backendName() });
+    res.json({ jobs: await store.listJobs(pool, { ownerId: OWNER.ownerId }), storage: storage.backendName() });
   }));
 
-  app.post("/api/jobs", canEdit, uploadMw, asyncRoute(async (req, res) => {
+  app.post("/api/jobs", canEdit, uploadMw, safe(async (req, res) => {
     const tmp = req.file && req.file.path;
     try {
       const b = req.body || {};
-      const personaId = typeof b.personaId === "string" ? b.personaId : "";
-      if (!(await store.getPersona(pool, personaId))) return res.status(400).json({ error: "Pick an audience first." });
-      const options = parseOptions(b);
-
-      if (req.file) {
-        try { await media.probe(tmp); } catch { return res.status(400).json({ error: "That file doesn't look like a video we can read (try mp4 or mov)." }); }
-        const id = crypto.randomUUID();
-        const ext = (path.extname(req.file.originalname || "") || ".mp4").toLowerCase().replace(/[^.a-z0-9]/g, "").slice(0, 8) || ".mp4";
-        const uri = await storage.putFile(tmp, `${id}/source${ext}`, req.file.mimetype || "video/mp4");
-        const job = await store.createJob(pool, {
-          id, userId: userIdOf(req), personaId, sourceKind: "upload", sourceLabel: (req.file.originalname || "upload").slice(0, 200), sourceUri: uri, options,
-        });
-        notifyJobQueued();
-        return res.status(201).json({ job });
-      }
-
-      const sourceUrl = typeof b.sourceUrl === "string" ? b.sourceUrl.trim() : "";
-      if (!sourceUrl) return res.status(400).json({ error: "Upload a video file or paste a direct video link." });
-      if (/(^|\.)(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|facebook\.com|vimeo\.com)$/i.test((() => { try { return new URL(sourceUrl).hostname; } catch { return ""; } })())) {
-        return res.status(400).json({ error: "Links to YouTube, TikTok and similar sites can't be downloaded from the server. Download the video and upload the file, or paste a direct link to the video file (.mp4)." });
-      }
-      try { await media.assertPublicUrl(sourceUrl); } catch (e) { return res.status(400).json({ error: e.message }); }
-      const label = decodeURIComponent(sourceUrl.split("?")[0].split("/").pop() || sourceUrl).slice(0, 200);
-      const job = await store.createJob(pool, { userId: userIdOf(req), personaId, sourceKind: "url", sourceLabel: label, sourceUrl, options });
-      notifyJobQueued();
+      const { job } = await createRun(pool, OWNER, { personaId: b.personaId, sourceUrl: b.sourceUrl, file: req.file, options: b });
       return res.status(201).json({ job });
     } finally {
       if (tmp) fs.promises.rm(tmp, { force: true }).catch(() => {});
@@ -196,7 +139,7 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
 
   // Videos already uploaded, so a new run can reuse one without uploading it again (start it with POST /jobs/:id/recaption).
   app.get("/api/videos", canView, asyncRoute(async (_req, res) => {
-    const rows = await store.listVideos(pool);
+    const rows = await store.listVideos(pool, { ownerId: OWNER.ownerId });
     res.json({ videos: rows.map((r) => ({
       job_id: r.id, label: r.source_label, created_at: r.created_at, runs: r.runs,
       duration: r.video_meta && Number(r.video_meta.duration) ? Number(r.video_meta.duration) : null,
@@ -212,18 +155,9 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     res.json({ job: { ...safeJob, moments: Array.isArray(job.analysis) ? job.analysis.length : null }, clips });
   }));
 
-  app.post("/api/jobs/:id/recaption", canEdit, asyncRoute(async (req, res) => {
+  app.post("/api/jobs/:id/recaption", canEdit, safe(async (req, res) => {
     const id = idParam(req, res); if (!id) return;
-    const parent = await store.getJob(pool, id);
-    if (!parent) return res.status(404).json({ error: "not found" });
-    if (!parent.source_uri) return res.status(409).json({ error: "The source video for this run isn't stored yet." });
-    const personaId = typeof (req.body || {}).personaId === "string" ? req.body.personaId : "";
-    if (!(await store.getPersona(pool, personaId))) return res.status(400).json({ error: "Pick an audience." });
-    const job = await store.createJob(pool, {
-      userId: userIdOf(req), personaId, sourceKind: parent.source_kind, sourceLabel: parent.source_label, sourceUrl: parent.source_url,
-      sourceUri: parent.source_uri, parentJobId: parent.id, analysis: parent.analysis, videoMeta: parent.video_meta, options: { ...(parent.options || {}), ...parseOptions(req.body || {}) },
-    });
-    notifyJobQueued();
+    const { job } = await rerun(pool, OWNER, id, req.body || {});
     res.status(201).json({ job });
   }));
 
@@ -247,7 +181,7 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
   // ── Library + clips ────────────────────────────────────────────────────
   app.get("/api/library", canView, asyncRoute(async (req, res) => {
     const { personaId, rating, q, limit, offset } = req.query;
-    const rows = await store.listLibrary(pool, { personaId, rating, q, limit, offset });
+    const rows = await store.listLibrary(pool, { personaId, rating, q, limit, offset, ownerId: OWNER.ownerId });
     res.json({ clips: rows.map(clipJson) });
   }));
 
@@ -257,25 +191,15 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     if (!caption || caption.length > 200) return res.status(400).json({ error: "Caption must be 1 to 200 characters." });
     const clip = await store.getClip(pool, id);
     if (!clip) return res.status(404).json({ error: "not found" });
-    res.json({ clip: clipJson(await applyCaption(clip, caption)) });
+    res.json({ clip: clipJson(await applyCaption(pool, clip, caption)) });
   }));
 
   // The AI writes a fresh caption for this clip (a different angle from the current one) and it is burned in.
-  app.post("/api/clips/:id/regenerate-caption", canEdit, asyncRoute(async (req, res) => {
+  app.post("/api/clips/:id/regenerate-caption", canEdit, safe(async (req, res) => {
     const id = idParam(req, res); if (!id) return;
     const clip = await store.getClip(pool, id);
     if (!clip) return res.status(404).json({ error: "not found" });
-    const [job, persona] = await Promise.all([store.getJob(pool, clip.job_id), store.getPersona(pool, clip.persona_id)]);
-    if (!persona) return res.status(409).json({ error: "That audience no longer exists." });
-    const taste = tasteFromRatings(await store.ratedClips(pool, persona.id));
-    let caption;
-    try {
-      caption = await regenerateCaption(persona, findMoment(job && job.analysis, clip), { taste, avoid: [clip.caption] });
-    } catch (e) {
-      console.error("[meme-builder] regenerateCaption failed:", e && e.message);
-      return res.status(e instanceof KieError ? 503 : 500).json({ error: friendlyMessage(e) });
-    }
-    res.json({ clip: clipJson(await applyCaption(clip, caption)) });
+    res.json({ clip: clipJson(await regenerate(pool, clip)) });
   }));
 
   app.post("/api/clips/:id/rating", canEdit, asyncRoute(async (req, res) => {
@@ -298,25 +222,7 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     const id = idParam(req, res); if (!id) return;
     const clip = await store.getClip(pool, id);
     if (!clip) return res.status(404).json({ error: "not found" });
-    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
-    let range = null;
-    if (m && (m[1] || m[2])) {
-      const total = await storage.sizeOf(clip.storage_uri);
-      const start = m[1] ? Number(m[1]) : Math.max(0, total - Number(m[2]));
-      const end = m[1] && m[2] ? Math.min(Number(m[2]), total - 1) : total - 1;
-      if (start >= total || start > end) return res.status(416).set("Content-Range", `bytes */${total}`).end();
-      range = { start, end };
-    }
-    const f = await storage.openRead(clip.storage_uri, range);
-    const headers = { "Content-Type": "video/mp4", "Accept-Ranges": "bytes", "Cache-Control": "private, max-age=300" };
-    if (req.query.download) headers["Content-Disposition"] = `attachment; filename="${(clip.caption || "clip").replace(/[^\w ]+/g, "").trim().slice(0, 60).replace(/\s+/g, "-") || "clip"}.mp4"`;
-    if (range) {
-      res.writeHead(206, { ...headers, "Content-Range": `bytes ${f.start}-${f.end}/${f.size}`, "Content-Length": f.end - f.start + 1 });
-    } else {
-      res.writeHead(200, { ...headers, "Content-Length": f.size });
-    }
-    f.stream.on("error", () => res.destroy());
-    f.stream.pipe(res);
+    await streamClipVideo(req, res, clip, { download: !!req.query.download });
   }));
 }
 

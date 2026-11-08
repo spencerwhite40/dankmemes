@@ -43,7 +43,7 @@ function withTimeout(promise, ms, message = TOO_LONG) {
 }
 const STALE_CHECK_MS = 60 * 1000;   // looking for orphaned runs is one cheap query
 
-function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPauseMs = RETRY_PAUSE_MS } = {}) {
+function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPauseMs = RETRY_PAUSE_MS, afterRun = require("./hooks").afterRun } = {}) {
   if ((process.env.MEME_BUILDER_RUNNER || "").toLowerCase() === "off") {
     log.log("[meme-builder] runner disabled via MEME_BUILDER_RUNNER=off");
     return { stop() {}, tick: async () => {} };
@@ -68,6 +68,7 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
         try {
           await withTimeout(run(pool, job, { log }), MAX_JOB_MS);
           log.log(`[meme-builder] job ${job.id} done`);
+          await afterRun(pool, job.id, { log });
         } catch (err) {
           log.error(`[meme-builder] job ${job.id} failed:`, err && err.message);
           // The AI service is flaky: a transient failure (5xx, overload, stall) puts the run back in the queue
@@ -81,6 +82,7 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
             const cur = await store.getJob(pool, job.id).catch(() => null);
             const step = cur && STEP_LABELS[cur.stage];
             await store.failJob(pool, job.id, friendlyMessage(err) + (step ? ` (it was ${step})` : "")).catch(() => {});
+            await afterRun(pool, job.id, { log });
           }
         }
       }

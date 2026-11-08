@@ -53,6 +53,20 @@
         <div id="clips" class="grid"></div>
       </section>
 
+      <details class="card" id="keys-card">
+        <summary><h2 style="display:inline">API keys</h2></summary>
+        <p class="muted">Let another app (or a customer) use this through the API. A key is shown once, so copy it when it appears. See docs/api.md.</p>
+        <ul id="keys" class="recent"></ul>
+        <form id="key-form" class="keyform">
+          <input id="key-name" placeholder="Name (e.g. Haulers)" required>
+          <input id="key-owner" placeholder="Owner id (e.g. haulers)" required pattern="[a-z0-9][a-z0-9_-]{0,39}">
+          <input id="key-quota" type="number" min="0" placeholder="Monthly minutes (optional)">
+          <button type="submit">Create key</button>
+        </form>
+        <pre id="key-new" class="note" hidden></pre>
+        <p id="key-error" class="error" role="alert"></p>
+      </details>
+
       <section class="card">
         <h2>Recent runs</h2>
         <ul id="recent" class="recent"></ul>

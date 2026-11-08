@@ -41,7 +41,7 @@ async function start() {
   const [{ personas }, { videos }, { jobs }] = await Promise.all([api("/personas"), api("/videos"), api("/jobs")]);
   $("persona").replaceChildren(...personas.map((p) => el("option", { value: p.id, textContent: p.name })));
   $("previous").replaceChildren(el("option", { value: "", textContent: "None" }), ...videos.map((v) => el("option", { value: v.job_id, textContent: `${v.label}${v.duration ? ` · ${mmss(v.duration)}` : ""} · ${new Date(v.created_at).toLocaleDateString()}` })));
-  renderRecent(jobs);
+  renderRecent(jobs); loadKeys();
   const active = jobs.find((j) => j.status === "queued" || j.status === "running");
   if (active) open(active.id);   // come back to a run that is still going
 }
@@ -51,6 +51,26 @@ function renderRecent(jobs) {
     el("span", { textContent: j.source_label }), el("span", { className: "st", textContent: j.status === "done" ? `${j.clip_count} clips` : j.status }))))
     : [el("li", { className: "muted", textContent: "Nothing yet." })]));
 }
+
+// ── API keys ────────────────────────────────────────────────────────────
+async function loadKeys() {
+  try {
+    const { keys } = await fetch("/admin/keys", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ keys: [] }));
+    $("keys").replaceChildren(...(keys.length ? keys.map((k) => el("li", {}, el("button", { type: "button", disabled: !!k.revoked_at, onclick: async () => { if (!confirm(`Revoke "${k.name}"? Anything using it stops working.`)) return; await fetch(`/admin/keys/${k.id}`, { method: "DELETE", credentials: "same-origin" }); loadKeys(); } },
+      el("span", { textContent: `${k.name} · ${k.owner_id} · ${k.key_prefix}…${k.revoked_at ? " (revoked)" : ""}` }), el("span", { className: "st", textContent: k.revoked_at ? "revoked" : "revoke" }))))
+      : [el("li", { className: "muted", textContent: "No keys yet." })]));
+  } catch { /* the keys list is optional */ }
+}
+$("key-form").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("key-error").textContent = ""; $("key-new").hidden = true;
+  try {
+    const res = await fetch("/admin/keys", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: $("key-name").value, ownerId: $("key-owner").value, monthlyMinutesQuota: $("key-quota").value }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Couldn't create the key.");
+    $("key-new").textContent = `Copy these now. They are not shown again.\n\nAPI key:        ${data.key}\nWebhook secret: ${data.webhook_secret}`; $("key-new").hidden = false;
+    $("key-form").reset(); loadKeys();
+  } catch (err) { $("key-error").textContent = err.message; }
+});
 
 // ── make clips ──────────────────────────────────────────────────────────
 $("make").addEventListener("click", async () => {

@@ -100,9 +100,9 @@ async function processJob(pool, job, { log = console } = {}) {
 
     // captions
     await stage("captions", { moments: moments.length });
-    const persona = await store.getPersona(pool, job.persona_id);
+    const persona = await store.getPersona(pool, job.persona_id, job.owner_id);
     if (!persona) throw new Error(`Audience "${job.persona_id}" no longer exists.`);
-    const taste = tasteFromRatings(await store.ratedClips(pool, persona.id));
+    const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job.owner_id));
     const captionModels = new Set();
     const captionStats = {};
     const ranked = await writeCaptions(persona, moments, {

@@ -8,42 +8,52 @@ const { getPreset, listPresets, isPresetId } = require("./personas");
 // ── Personas ─────────────────────────────────────────────────────────────
 
 /** Presets first, then custom personas (data jsonb flattened + id/name). */
-async function listPersonas(pool) {
-  const { rows } = await pool.query("select id, name, data, created_at, updated_at from public.meme_builder_personas order by name");
+async function listPersonas(pool, ownerId) {
+  // Custom audiences are private to their owner. With no owner given (the web page) every custom audience is listed.
+  const { rows } = ownerId
+    ? await pool.query("select id, name, data, created_at, updated_at from public.meme_builder_personas where owner_id = $1 order by name", [ownerId])
+    : await pool.query("select id, name, data, created_at, updated_at from public.meme_builder_personas order by name");
   const custom = rows.map((r) => ({ ...r.data, id: r.id, name: r.name, preset: false, created_at: r.created_at, updated_at: r.updated_at }));
   return [...listPresets(), ...custom];
 }
 
-async function getPersona(pool, id) {
+async function getPersona(pool, id, ownerId) {
   const preset = getPreset(id);
   if (preset) return { ...preset, preset: true };
-  const { rows } = await pool.query("select id, name, data from public.meme_builder_personas where id = $1", [id]);
+  const { rows } = ownerId
+    ? await pool.query("select id, name, data from public.meme_builder_personas where id = $1 and owner_id = $2", [id, ownerId])
+    : await pool.query("select id, name, data from public.meme_builder_personas where id = $1", [id]);
   return rows[0] ? { ...rows[0].data, id: rows[0].id, name: rows[0].name, preset: false } : null;
 }
 
-async function savePersona(pool, { id, name, data, userId }) {
+async function savePersona(pool, { id, name, data, userId, ownerId = "default" }) {
   if (isPresetId(id)) throw new Error("Built-in audiences can't be overwritten. Save your edit under a new name.");
+  // The update only applies to the owner's own audience: another customer's audience with the same id is never overwritten.
   const { rows } = await pool.query(
-    `insert into public.meme_builder_personas (id, name, data, created_by)
-     values ($1, $2, $3::jsonb, $4)
+    `insert into public.meme_builder_personas (id, name, data, created_by, owner_id)
+     values ($1, $2, $3::jsonb, $4, $5)
      on conflict (id) do update set name = excluded.name, data = excluded.data, updated_at = now()
+       where public.meme_builder_personas.owner_id is not distinct from excluded.owner_id
      returning id, name, data`,
-    [id, name, JSON.stringify(data), userId || null],
+    [id, name, JSON.stringify(data), userId || null, ownerId],
   );
+  if (!rows[0]) throw new Error("An audience with that name already exists.");
   return { ...rows[0].data, id: rows[0].id, name: rows[0].name, preset: false };
 }
 
-async function deletePersona(pool, id) {
+async function deletePersona(pool, id, ownerId = "default") {
   if (isPresetId(id)) throw new Error("Built-in audiences can't be deleted.");
-  const r = await pool.query("delete from public.meme_builder_personas where id = $1", [id]);
+  const r = await pool.query("delete from public.meme_builder_personas where id = $1 and owner_id = $2", [id, ownerId]);
   return r.rowCount > 0;
 }
 
 /** Rated captions for one audience, oldest first (latest rating per caption wins downstream). */
-async function ratedClips(pool, personaId) {
+async function ratedClips(pool, personaId, ownerId = "default") {
+  // Only this owner's ratings: one customer's feedback must never shape another customer's captions.
   const { rows } = await pool.query(
-    "select caption, transcript, rating from public.meme_builder_clips where persona_id = $1 and rating <> 0 order by updated_at",
-    [personaId],
+    `select c.caption, c.transcript, c.rating from public.meme_builder_clips c join public.meme_builder_jobs j on j.id = c.job_id
+      where c.persona_id = $1 and c.rating <> 0 and j.owner_id = $2 order by c.updated_at`,
+    [personaId, ownerId],
   );
   return rows;
 }
@@ -53,11 +63,12 @@ async function ratedClips(pool, personaId) {
 async function createJob(pool, j) {
   const { rows } = await pool.query(
     `insert into public.meme_builder_jobs
-       (id, created_by, persona_id, source_kind, source_label, source_url, source_uri, parent_job_id, options, analysis, video_meta)
-     values (coalesce($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb)
+       (id, created_by, persona_id, source_kind, source_label, source_url, source_uri, parent_job_id, options, analysis, video_meta, owner_id, api_key_id)
+     values (coalesce($1, gen_random_uuid()), $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11::jsonb, $12, $13)
      returning *`,
     [j.id || null, j.userId || null, j.personaId, j.sourceKind, j.sourceLabel, j.sourceUrl || null, j.sourceUri || null,
-      j.parentJobId || null, JSON.stringify(j.options || {}), j.analysis ? JSON.stringify(j.analysis) : null, j.videoMeta ? JSON.stringify(j.videoMeta) : null],
+      j.parentJobId || null, JSON.stringify(j.options || {}), j.analysis ? JSON.stringify(j.analysis) : null, j.videoMeta ? JSON.stringify(j.videoMeta) : null,
+      j.ownerId || "default", j.apiKeyId || null],
   );
   return rows[0];
 }
@@ -139,26 +150,33 @@ async function requeueStale(pool, { staleMinutes = 3, maxAttempts = 3 } = {}) { 
   );
 }
 
-async function listJobs(pool, { limit = 50 } = {}) {
+async function listJobs(pool, { limit = 50, ownerId = "default" } = {}) {
   const { rows } = await pool.query(
     `select j.id, j.persona_id, j.source_kind, j.source_label, j.status, j.stage, j.error, j.created_at, j.finished_at, j.parent_job_id,
             (select count(*)::int from public.meme_builder_clips c where c.job_id = j.id) as clip_count
-       from public.meme_builder_jobs j order by j.created_at desc limit $1`,
-    [Math.min(Number(limit) || 50, 200)],
+       from public.meme_builder_jobs j where j.owner_id = $2 order by j.created_at desc limit $1`,
+    [Math.min(Number(limit) || 50, 200), ownerId],
   );
   return rows;
 }
 
 /** Videos already stored, newest first, one row per stored file (the latest run that used it). */
-async function listVideos(pool, { limit = 30 } = {}) {
+async function listVideos(pool, { limit = 30, ownerId = "default" } = {}) {
   const { rows } = await pool.query(
     `select distinct on (source_uri) id, source_label, created_at, video_meta, persona_id,
-            (select count(*)::int from public.meme_builder_jobs j2 where j2.source_uri = j.source_uri) as runs
+            (select count(*)::int from public.meme_builder_jobs j2 where j2.source_uri = j.source_uri and j2.owner_id = $1) as runs
        from public.meme_builder_jobs j
-      where source_uri is not null
+      where source_uri is not null and owner_id = $1
       order by source_uri, created_at desc`,
+    [ownerId],
   );
   return rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, Math.min(Number(limit) || 30, 100));
+}
+
+/** An earlier run from the same owner with the same idempotency key (so a retried request doesn't start a second run). */
+async function findJobByIdempotencyKey(pool, ownerId, key) {
+  const { rows } = await pool.query("select * from public.meme_builder_jobs where owner_id = $1 and options->>'idempotencyKey' = $2 order by created_at desc limit 1", [ownerId, String(key).slice(0, 120)]);
+  return rows[0] || null;
 }
 
 async function getJob(pool, id) {
@@ -227,8 +245,8 @@ async function deleteJob(pool, id) {
 }
 
 /** Library: every clip, newest first, filterable. */
-async function listLibrary(pool, { personaId, rating, q, limit = 60, offset = 0 } = {}) {
-  const where = [], vals = [];
+async function listLibrary(pool, { personaId, rating, q, limit = 60, offset = 0, ownerId = "default" } = {}) {
+  const where = ["j.owner_id = $1"], vals = [ownerId];
   if (personaId) { vals.push(personaId); where.push(`c.persona_id = $${vals.length}`); }
   if (rating !== undefined && rating !== null && rating !== "") { vals.push(Number(rating)); where.push(`c.rating = $${vals.length}`); }
   if (q) { vals.push(`%${String(q).replace(/[%_]/g, "\\$&")}%`); where.push(`c.caption ilike $${vals.length}`); }
@@ -246,6 +264,6 @@ async function listLibrary(pool, { personaId, rating, q, limit = 60, offset = 0 
 
 module.exports = {
   listPersonas, getPersona, savePersona, deletePersona, ratedClips,
-  createJob, claimNextJob, setStage, patchJob, touchJob, requeueForRetry, finishJob, failJob, retryJob, requeueStale, listJobs, listVideos, getJob,
+  createJob, claimNextJob, setStage, patchJob, touchJob, requeueForRetry, finishJob, failJob, retryJob, requeueStale, listJobs, listVideos, findJobByIdempotencyKey, getJob,
   clearClips, addClip, listJobClips, getClip, updateClipCaption, setRating, deleteClip, deleteJob, listLibrary,
 };
