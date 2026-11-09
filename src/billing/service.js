@@ -25,6 +25,7 @@ const isSubscriber = (u) => !!u && u.plan !== DEFAULT_PLAN && !u.locked_at && (!
 async function startCheckout(pool, user, req, { plan, period, pack }) {
   const u = await userRow(pool, user.id);
   if (!u) throw new HttpError(401, "Please sign in.", "signed_out");
+  await require("../accounts").assertVerified(pool, u.id);
   const base = appUrl(req);
   const common = {
     success_url: `${base}/?billing=success`, cancel_url: `${base}/?billing=cancelled`,

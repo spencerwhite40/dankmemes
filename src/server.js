@@ -13,6 +13,8 @@ const { startMemeBuilderWorker } = require("./worker");
 const { asyncRoute } = require("./async-route");
 const { buildV1 } = require("./v1");
 const { registerBillingWebhook, registerBillingRoutes } = require("./billing/routes");
+const legal = require("./legal");
+const mail = require("./email");
 
 function buildApp(pool) {
   const app = express();
@@ -31,6 +33,7 @@ function buildApp(pool) {
   registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: needActive });
   app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 
+  legal.registerLegalRoutes(app);           // /terms /privacy /refunds /copyright
   app.use(express.static(path.join(__dirname, "..", "public")));
   // JSON errors for the API, so the page can show a plain message.
   // eslint-disable-next-line no-unused-vars
@@ -45,6 +48,14 @@ async function main() {
   const pool = makePool();
   await migrate(pool);
   require("./lib/ai").ledger.setPool(pool);
+  // Things that must be settled before real customers arrive; said loudly in production, never fatal.
+  if (process.env.NODE_ENV === "production") {
+    if (!mail.configured()) console.warn("[setup] No email provider (RESEND_API_KEY or POSTMARK_SERVER_TOKEN): email verification and password reset are OFF.");
+    if (mail.configured() && !process.env.EMAIL_FROM) console.warn("[setup] EMAIL_FROM is not set: no email can be sent.");
+    if (!process.env.APP_URL) console.warn("[setup] APP_URL is not set: links in emails and Stripe redirects will use the request's host.");
+    if (legal.missing().length) console.warn(`[setup] Legal pages still have placeholders. Set: ${legal.missing().join(", ")}`);
+    if (!legal.reviewed()) console.warn("[setup] Legal pages are drafts (shown with a banner). Set LEGAL_REVIEWED=yes once a lawyer has reviewed them.");
+  }
   const app = buildApp(pool);
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => console.log(`Meme Builder listening on :${port}`));

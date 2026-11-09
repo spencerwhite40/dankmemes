@@ -173,3 +173,18 @@ alter table users add column if not exists locked_at timestamptz;
 -- "Stay another month" offer: the pack promised (granted when the next monthly payment succeeds) and when one was last accepted
 alter table users add column if not exists retention_offer_pack    text;
 alter table users add column if not exists retention_offer_used_at timestamptz;
+
+-- ── Email: verification and password reset ────────────────────────────────────────────────────────────────────
+alter table users add column if not exists email_verified_at timestamptz;
+alter table users add column if not exists terms_accepted_at timestamptz;
+
+-- one-time links sent by email. Only the hash of the token is stored, so a database leak can't be replayed.
+create table if not exists auth_tokens (
+  token_hash text primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  purpose    text not null,            -- 'verify' | 'reset'
+  expires_at timestamptz not null,
+  used_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists auth_tokens_user_idx on auth_tokens (user_id, purpose);

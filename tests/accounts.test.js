@@ -155,7 +155,7 @@ describe("accounts against a real database", { skip: !DB && "DATABASE_URL_TEST i
       const c = client(); const e = email("web");
       assert.equal((await c.call("GET", "/api/me")).json.signedIn, false);
       assert.equal((await c.call("GET", "/api/jobs")).status, 401, "the page's routes need a session");
-      const up = await c.call("POST", "/auth/signup", { email: e, password: PW, name: "Web" });
+      const up = await c.call("POST", "/auth/signup", { email: e, password: PW, name: "Web", accept_terms: true });
       assert.equal(up.status, 201); assert.match(up.setCookie, /mb_session=/); assert.match(up.setCookie, /HttpOnly/); assert.match(up.setCookie, /SameSite=Lax/);
       assert.equal(up.json.user.email, e); assert.ok(!JSON.stringify(up.json).includes("password"));
       const me = (await c.call("GET", "/api/me")).json;
@@ -178,7 +178,7 @@ describe("accounts against a real database", { skip: !DB && "DATABASE_URL_TEST i
   describe("every account only ever sees its own things", () => {
     test("runs: A's run is not in B's list, B cannot delete it, A can; deleting frees the storage", async () => {
       const A = client(), B = client();
-      await A.call("POST", "/auth/signup", { email: email("a"), password: PW }); await B.call("POST", "/auth/signup", { email: email("b"), password: PW });
+      await A.call("POST", "/auth/signup", { email: email("a"), password: PW, accept_terms: true }); await B.call("POST", "/auth/signup", { email: email("b"), password: PW, accept_terms: true });
       const made = await A.call("POST", "/api/jobs", { personaId: "truckers", sourceUrl: "https://8.8.8.8/mine.mp4" });
       assert.equal(made.status, 201); const id = made.json.job.id;
       assert.ok((await A.call("GET", "/api/jobs")).json.jobs.some((j) => j.id === id));
@@ -269,7 +269,7 @@ describe("accounts against a real database", { skip: !DB && "DATABASE_URL_TEST i
     });
     test("API access belongs to paid plans: a free account can't make a key, and a key whose owner is on a free plan is refused", async () => {
       const c = client(); const e = email("api");
-      await c.call("POST", "/auth/signup", { email: e, password: PW });
+      await c.call("POST", "/auth/signup", { email: e, password: PW, accept_terms: true });
       const denied = await c.call("POST", "/account/keys", { name: "mine" });
       assert.equal(denied.status, 403); assert.equal(denied.json.code, "api_not_in_plan");
       const me = (await c.call("GET", "/api/me")).json.user;
@@ -285,7 +285,7 @@ describe("accounts against a real database", { skip: !DB && "DATABASE_URL_TEST i
     });
     test("keys are private to their account: another account can't list or revoke them, and a revoked key stops working", async () => {
       const A = client(), B = client();
-      await A.call("POST", "/auth/signup", { email: email("ka"), password: PW }); await B.call("POST", "/auth/signup", { email: email("kb"), password: PW });
+      await A.call("POST", "/auth/signup", { email: email("ka"), password: PW, accept_terms: true }); await B.call("POST", "/auth/signup", { email: email("kb"), password: PW, accept_terms: true });
       await accounts.setPlan(pool, (await A.call("GET", "/api/me")).json.user.id, "creator"); await accounts.setPlan(pool, (await B.call("GET", "/api/me")).json.user.id, "creator");
       const made = (await A.call("POST", "/account/keys", { name: "a-key" })).json;
       assert.equal((await B.call("GET", "/account/keys")).json.keys.length, 0);

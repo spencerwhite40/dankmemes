@@ -6,6 +6,7 @@ const { promisify } = require("node:util");
 const { getPlan, DEFAULT_PLAN, planNames, GB } = require("./plans");
 const { HttpError } = require("./errors");
 const keys = require("./lib/keys");
+const mail = require("./email");
 const packs = require("./billing/packs");
 
 const scrypt = promisify(crypto.scrypt);
@@ -32,7 +33,7 @@ const dummy = async () => (dummyHash = dummyHash || (await hashPassword("not-a-r
 const normEmail = (e) => String(e || "").trim().toLowerCase();
 const adminEmails = () => String(process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 
-const userOut = (u) => ({ id: u.id, email: u.email, name: u.name || null, plan: u.plan, is_admin: !!u.is_admin, locked: !!u.locked_at, created_at: u.created_at });
+const userOut = (u) => ({ id: u.id, email: u.email, name: u.name || null, plan: u.plan, is_admin: !!u.is_admin, locked: !!u.locked_at, email_verified: !!u.email_verified_at, created_at: u.created_at });
 
 function checkCredentials(email, password) {
   if (!EMAIL_RE.test(email)) throw new HttpError(400, "Enter a valid email address.", "bad_email");
@@ -40,15 +41,15 @@ function checkCredentials(email, password) {
   if (password.length > 200) throw new HttpError(400, "That password is too long.", "bad_password");
 }
 
-async function signup(pool, { email, password, name }) {
+async function signup(pool, { email, password, name, acceptedTerms = false }) {
   if ((process.env.SIGNUPS || "open").toLowerCase() === "closed") throw new HttpError(403, "Sign-ups are closed right now.", "signups_closed");
   email = normEmail(email);
   checkCredentials(email, password);
   const hash = await hashPassword(password);
   try {
     const { rows } = await pool.query(
-      "insert into users (email, password_hash, name, plan, is_admin) values ($1, $2, $3, $4, $5) returning *",
-      [email, hash, name ? String(name).trim().slice(0, 80) : null, DEFAULT_PLAN, adminEmails().includes(email)],
+      "insert into users (email, password_hash, name, plan, is_admin, terms_accepted_at) values ($1, $2, $3, $4, $5, $6) returning *",
+      [email, hash, name ? String(name).trim().slice(0, 80) : null, DEFAULT_PLAN, adminEmails().includes(email), acceptedTerms ? new Date() : null],
     );
     return rows[0];
   } catch (e) {
@@ -88,6 +89,15 @@ async function userForSession(pool, token) {
 }
 async function endSession(pool, token) { if (token) await pool.query("delete from sessions where token_hash = $1", [sha(token)]); }
 async function endAllSessions(pool, userId) { await pool.query("delete from sessions where user_id = $1", [userId]); }
+
+/** Email must be confirmed before work starts, but only where email can actually be sent (otherwise nobody could confirm). */
+const verificationRequired = () => mail.configured();
+async function markVerified(pool, userId) { await pool.query("update users set email_verified_at = coalesce(email_verified_at, now()) where id = $1", [userId]); }
+async function assertVerified(pool, ownerId) {
+  if (!verificationRequired() || !/^[0-9a-f-]{36}$/i.test(String(ownerId || ""))) return;
+  const { rows } = await pool.query("select email, email_verified_at from users where id = $1", [ownerId]);
+  if (rows[0] && !rows[0].email_verified_at) throw new HttpError(403, `Confirm your email address first. We sent a link to ${rows[0].email}.`, "email_not_verified");
+}
 
 async function setPassword(pool, userId, password) {
   if (typeof password !== "string" || password.length < 10) throw new HttpError(400, "Choose a password of at least 10 characters.", "weak_password");
@@ -145,6 +155,7 @@ async function usageSnapshot(pool, ownerId) {
  * Throws an HttpError that says what to do about it.
  */
 async function assertCanStart(pool, ownerId, { fileBytes = 0 } = {}) {
+  await assertVerified(pool, ownerId);
   const plan = await planFor(pool, ownerId);
   const month = await keys.monthUsage(pool, ownerId);
   if (month.minutes >= plan.monthlyMinutes && !((await packs.remaining(pool, ownerId)) > 0)) throw new HttpError(402, `You've used all ${plan.monthlyMinutes} minutes of the ${plan.label} plan this month. They reset on the 1st (UTC). You can buy a top-up pack or move to a bigger plan.`, "quota_exceeded");
@@ -156,5 +167,5 @@ async function assertCanStart(pool, ownerId, { fileBytes = 0 } = {}) {
 
 module.exports = {
   hashPassword, verifyPassword, signup, authenticate, createSession, userForSession, endSession, endAllSessions, setPassword, setPlan,
-  planFor, isLocked, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
+  markVerified, assertVerified, verificationRequired, planFor, isLocked, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
 };

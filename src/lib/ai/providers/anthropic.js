@@ -11,6 +11,7 @@ const canReadMedia = () => false;
 
 function classify(status, json, raw, model) {
   const msg = (json && json.error && json.error.message) || String(raw).slice(0, 200);
+  if (status === 402) return new AiError(`anthropic: ${model}: the account is out of credit (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 401 || status === 403) return new AiError(`anthropic: ${model}: the API key was rejected (${msg.slice(0, 100)})`, { status, code: "bad_key" });
   if (/credit balance is too low|billing/i.test(msg)) return new AiError(`anthropic: ${model}: the account is out of credit (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 404 || (json && json.error && json.error.type === "not_found_error")) return new AiError(`anthropic: model "${model}" was not found (${msg.slice(0, 100)})`, { status, code: "no_model" });

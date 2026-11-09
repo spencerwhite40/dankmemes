@@ -25,8 +25,13 @@ const mediaUrls = (messages) => messages.flatMap((m) => (Array.isArray(m.content
 // request a delay, not every request after it. If every model is marked down we try them anyway.
 const DOWN_MS = 3 * 60 * 1000;
 const downUntil = new Map();
-const isDown = (m) => (downUntil.get(m) || 0) > Date.now();
-function resetModelHealth() { downUntil.clear(); }
+// A provider whose prepaid balance is empty fails every request the same way, so it is set aside as a whole for a few
+// minutes (and said so in the log, once per window). It comes back by itself once it has been topped up.
+const FUNDING_DOWN_MS = 5 * 60 * 1000;
+const unfunded = new Map();
+const providerDown = (provider) => (unfunded.get(provider) || 0) > Date.now();
+const isDown = (m) => (downUntil.get(m) || 0) > Date.now() || providerDown(models.parseModelId(m).provider);
+function resetModelHealth() { downUntil.clear(); unfunded.clear(); }
 
 /** The models from a chain that can actually be used for this request. */
 function usable(chain, urls) {
@@ -74,6 +79,10 @@ async function chat({ messages, system, models: chain, maxTokens = 4096, retries
       } catch (err) {
         lastErr = err;
         ledger.record({ provider, model, kind: urls.length ? "video" : "text", usage: {}, latencyMs: Date.now() - t0, ok: false, error: err && err.message });
+        if (err instanceof AiError && err.code === "out_of_credit") {
+          if (!providerDown(provider)) console.error(`[funding] ${provider} is out of credit. Top it up (or raise its auto-reload). Using the next provider meanwhile.`);
+          unfunded.set(provider, Date.now() + FUNDING_DOWN_MS);
+        }
         if (!(err instanceof AiError) || !err.retryable) break;   // permanent for this model -> next model
         transientFailure = true;
         if (attempt < attempts - 1) await sleep(2000 * 2 ** attempt);

@@ -25,7 +25,8 @@ let mode = "in";
 function setMode(m) {
   mode = m;
   $("tab-in").classList.toggle("on", m === "in"); $("tab-up").classList.toggle("on", m === "up");
-  $("name").hidden = m === "in"; $("pw-hint").hidden = m === "in";
+  $("name").hidden = m === "in"; $("pw-hint").hidden = m === "in"; $("terms-row").hidden = m === "in"; $("forgot-link").hidden = m !== "in";
+  $("forgot-form").hidden = true; $("login-form").hidden = false;
   $("auth-submit").textContent = m === "in" ? "Sign in" : "Create account";
   $("password").autocomplete = m === "in" ? "current-password" : "new-password";
   $("login-error").textContent = "";
@@ -38,13 +39,54 @@ function showLogin(signupsOpen = true) {
 }
 $("login-form").addEventListener("submit", async (e) => {
   e.preventDefault(); $("login-error").textContent = "";
+  if (mode === "up" && !$("terms").checked) { $("login-error").textContent = "Please agree to the Terms and the Privacy Policy to create an account."; return; }
   try {
-    const res = await fetch(mode === "in" ? "/auth/login" : "/auth/signup", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("email").value, password: $("password").value, name: $("name").value }) });
+    const res = await fetch(mode === "in" ? "/auth/login" : "/auth/signup", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: $("email").value, password: $("password").value, name: $("name").value, accept_terms: mode === "up" ? $("terms").checked : undefined }) });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Couldn't sign in.");
     $("password").value = ""; await start();
   } catch (err) { $("login-error").textContent = err.message; }
 });
+// ── forgot password, reset link, confirm-email link ───────────────────────
+const note = (text) => { $("notice").textContent = text; $("notice").hidden = !text; };
+async function postJson(path, body) {
+  const res = await fetch(path, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "That didn't work.");
+  return data;
+}
+$("forgot-link").addEventListener("click", () => { $("login-form").hidden = true; $("forgot-form").hidden = false; $("forgot-link").hidden = true; $("forgot-email").value = $("email").value; $("login-error").textContent = ""; });
+$("forgot-back").addEventListener("click", () => setMode("in"));
+$("forgot-form").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("login-error").textContent = "";
+  try { await postJson("/auth/forgot", { email: $("forgot-email").value }); setMode("in"); note("If there's an account for that address, we've sent a link to choose a new password. It works for an hour."); }
+  catch (err) { $("login-error").textContent = err.message; }
+});
+let resetToken = null;
+$("reset-form").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("reset-error").textContent = "";
+  try {
+    await postJson("/auth/reset", { token: resetToken, password: $("new-password").value });
+    $("new-password").value = ""; resetToken = null; $("reset-card").hidden = true;
+    note("Your password has been changed. Sign in with the new one."); await start();
+  } catch (err) { $("reset-error").textContent = err.message; }
+});
+// The links in our emails come back as /?verify=... or /?reset=...; the token is taken out of the address bar at once.
+async function handleEmailLinks() {
+  const q = new URLSearchParams(location.search), verify = q.get("verify"), reset = q.get("reset");
+  if (!verify && !reset) return false;
+  history.replaceState(null, "", location.pathname);
+  if (reset) { resetToken = reset; $("reset-card").hidden = false; $("login").hidden = true; return true; }
+  try { await postJson("/auth/verify", { token: verify }); note("Your email address is confirmed. Thank you."); }
+  catch (err) { note(err.message); }
+  return false;
+}
+$("verify-resend").addEventListener("click", async () => {
+  $("verify-msg").textContent = "";
+  try { const r = await postJson("/auth/resend-verification"); $("verify-msg").textContent = r.already ? "You're already confirmed." : "Sent. Check your inbox and spam folder."; }
+  catch (err) { $("verify-msg").textContent = err.message; }
+});
+
 $("logout").addEventListener("click", async () => { await fetch("/auth/logout", { method: "POST", credentials: "same-origin" }); location.reload(); });
 
 // ── your plan ───────────────────────────────────────────────────────────────
@@ -210,6 +252,9 @@ async function start() {
   const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json());
   if (!me.signedIn) return showLogin(me.signupsOpen !== false);
   $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false; await refreshPlan(); await loadBilling(); afterCheckout();
+  const needsConfirm = me.verification_required && !me.user.email_verified;
+  $("verify-banner").hidden = !needsConfirm;
+  if (needsConfirm) $("verify-text").textContent = `Confirm your email address to start making clips. We sent a link to ${me.user.email}.`;
   if (me.user.locked) return showLocked(me);   // nothing else of the account is reachable until they subscribe again
   const [{ personas }, { videos }, { jobs }] = await Promise.all([api("/personas"), api("/videos"), api("/jobs")]);
   $("persona").replaceChildren(...personas.map((p) => el("option", { value: p.id, textContent: p.name })));
@@ -354,4 +399,4 @@ function clipCard(c) {
   return card;
 }
 
-start().catch((e) => { document.body.append(el("p", { className: "error", textContent: e.message })); });
+handleEmailLinks().then((stop) => (stop ? null : start())).catch((e) => { document.body.append(el("p", { className: "error", textContent: e.message })); });

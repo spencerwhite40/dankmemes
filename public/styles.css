@@ -66,3 +66,10 @@ details.card summary { cursor:pointer; }
 #app.locked > :not(#locked-card):not(#pricing-card) { display:none !important; }
 #cancel-panel { padding:12px; border:1px solid var(--line); border-radius:10px; }
 .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.check { display:flex; gap:8px; align-items:flex-start; font-size:14px; }
+.check input { width:auto; margin-top:3px; }
+.foot { text-align:center; padding:24px 16px; font-size:13px; }
+.legal { max-width:760px; margin:0 auto; padding:16px; line-height:1.6; }
+.legal h3 { margin-top:24px; }
+.draft-banner { background:#fff3cd; color:#533f03; border:1px solid #ffe08a; border-radius:8px; padding:10px 12px; }
+@media (prefers-color-scheme: dark) { .draft-banner { background:#3b3210; color:#ffe08a; border-color:#5f4e12; } }

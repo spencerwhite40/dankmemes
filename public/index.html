@@ -13,6 +13,18 @@
   </header>
 
   <main>
+    <p id="notice" class="note" role="status" hidden></p>
+
+    <!-- Choose a new password (arrived from the reset email) -->
+    <section id="reset-card" class="card" hidden>
+      <h2>Choose a new password</h2>
+      <form id="reset-form">
+        <input id="new-password" type="password" placeholder="New password (at least 10 characters)" autocomplete="new-password" minlength="10" required>
+        <button type="submit">Change password</button>
+      </form>
+      <p id="reset-error" class="error" role="alert"></p>
+    </section>
+
     <!-- Sign in / create account -->
     <section id="login" class="card" hidden>
       <div class="tabs" role="tablist">
@@ -24,13 +36,26 @@
         <input id="email" type="email" placeholder="Email" autocomplete="email" required>
         <input id="password" type="password" placeholder="Password" autocomplete="current-password" minlength="10" required>
         <p id="pw-hint" class="muted" hidden>At least 10 characters.</p>
+        <label id="terms-row" class="check" hidden><input type="checkbox" id="terms"> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
         <button id="auth-submit" type="submit">Sign in</button>
+      </form>
+      <button type="button" id="forgot-link" class="link">Forgot your password?</button>
+      <form id="forgot-form" hidden>
+        <p class="muted">Enter your email and we'll send you a link to choose a new password.</p>
+        <input id="forgot-email" type="email" placeholder="Email" autocomplete="email" required>
+        <button type="submit">Send reset link</button>
+        <button type="button" id="forgot-back" class="link">Back to sign in</button>
       </form>
       <p id="login-error" class="error" role="alert"></p>
     </section>
 
     <!-- The whole flow -->
     <div id="app" hidden>
+      <section class="card" id="verify-banner" hidden>
+        <p id="verify-text"></p>
+        <div class="row"><button type="button" id="verify-resend" class="small">Send the email again</button><span id="verify-msg" class="muted"></span></div>
+      </section>
+
       <section class="card" id="locked-card" hidden>
         <h2>Your subscription has ended</h2>
         <p id="locked-text"></p>
@@ -119,6 +144,7 @@
       </section>
     </div>
   </main>
+  <footer class="foot muted"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/copyright">Copyright</a></footer>
   <script src="/app.js"></script>
 </body>
 </html>

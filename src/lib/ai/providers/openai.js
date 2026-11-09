@@ -12,6 +12,7 @@ const canReadMedia = () => false;
 function classify(status, json, raw, model) {
   const e = (json && json.error) || {};
   const msg = e.message || String(raw).slice(0, 200);
+  if (status === 402) return new AiError(`openai: ${model}: the account is out of credit (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 401) return new AiError(`openai: ${model}: the API key was rejected (${msg.slice(0, 100)})`, { status, code: "bad_key" });
   if (e.code === "insufficient_quota" || /exceeded your current quota|billing/i.test(msg)) return new AiError(`openai: ${model}: the account is out of credit (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 404 || e.code === "model_not_found") return new AiError(`openai: model "${model}" was not found (${msg.slice(0, 100)})`, { status, code: "no_model" });

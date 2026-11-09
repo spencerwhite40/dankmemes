@@ -19,6 +19,7 @@ const canReadMedia = (url) => String(url).startsWith(`${base()}/v1beta/files/`);
 function classify(status, json, raw, model) {
   const msg = (json && json.error && json.error.message) || String(raw).slice(0, 200);
   const reason = json && json.error && json.error.status;
+  if (status === 402) return new AiError(`google: ${model}: the prepaid balance is empty (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 401 || status === 403 || /API key (not valid|expired)|PERMISSION_DENIED/i.test(msg)) return new AiError(`google: ${model}: the API key was rejected (${msg.slice(0, 100)})`, { status, code: "bad_key" });
   if (status === 429 && /quota|billing|exhausted/i.test(msg) && reason === "RESOURCE_EXHAUSTED" && /per day|billing|free/i.test(msg)) return new AiError(`google: ${model}: out of quota (${msg.slice(0, 100)})`, { status, code: "out_of_credit" });
   if (status === 404) return new AiError(`google: model "${model}" was not found (${msg.slice(0, 100)})`, { status, code: "no_model" });
