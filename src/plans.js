@@ -24,10 +24,20 @@ const PLANS = {
   agency:  { label: "Agency",  monthlyMinutes: 2000, priceMonthly: 300, priceAnnual: 255,   maxVideoMinutes: 120, maxUploadMb: 2000, storageGb: 500, retentionDays: 365, concurrentRuns: 8, apiAccess: true,  ratePerMin: 600, tasteExamples: 50, models: "premium",  clipsPerRun: 60 },
 };
 
+// Top-up packs: extra minutes bought once. They are used after the plan's monthly minutes and last PACK_MONTHS months.
+// A pack always costs more per minute than any plan (a test checks it), so heavy users have a reason to upgrade.
+const PACKS = {
+  small: { label: "40 minutes",  minutes: 40,  price: 10 },
+  large: { label: "100 minutes", minutes: 100, price: 22 },
+};
+const PACK_MONTHS = 12;
+const PERIODS = ["monthly", "annual"];
+const paidPlanNames = () => Object.keys(PLANS).filter((n) => PLANS[n].priceMonthly > 0);
+
 const DEFAULT_PLAN = "free";
 const planNames = () => Object.keys(PLANS);
 /** The limits for a plan name (an unknown name falls back to the free plan, never to unlimited). */
 const getPlan = (name) => ({ name: PLANS[name] ? name : DEFAULT_PLAN, ...(PLANS[name] || PLANS[DEFAULT_PLAN]) });
 const GB = 1024 ** 3;
 
-module.exports = { PLANS, DEFAULT_PLAN, planNames, getPlan, GB };
+module.exports = { PLANS, PACKS, PACK_MONTHS, PERIODS, DEFAULT_PLAN, planNames, paidPlanNames, getPlan, GB };

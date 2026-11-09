@@ -53,3 +53,13 @@ details.card summary { cursor:pointer; }
 .recent .del { background:transparent; color:var(--muted); border:0; padding:0 6px; width:auto; font-size:13px; text-decoration:underline; flex:none; }
 .recent li { display:flex; gap:6px; align-items:stretch; }
 .recent li > button:first-child { flex:1; }
+
+.plans { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:12px 0; }
+.plan { display:flex; flex-direction:column; gap:6px; padding:14px; border:1px solid var(--line); border-radius:10px; }
+.plan.mine { border-color:var(--accent); }
+.plan .price { font-size:22px; font-weight:700; }
+.plan button { margin-top:auto; }
+.plan button:disabled { opacity:.55; cursor:default; }
+#pricing-card h3 { margin:18px 0 0; font-size:16px; }
+
+[hidden] { display:none !important; }   /* author styles like .card { display:flex } must not un-hide an element that has the hidden attribute */

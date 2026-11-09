@@ -67,7 +67,7 @@ function registerAuthRoutes(app, { pool, asyncRoute }) {
   app.get("/api/me", asyncRoute(async (req, res) => {
     const user = await accounts.userForSession(pool, readCookie(req));
     if (!user) return res.json({ signedIn: false, signupsOpen: (process.env.SIGNUPS || "open").toLowerCase() !== "closed" });
-    res.json({ signedIn: true, user: accounts.userOut(user), ...(await accounts.usageSnapshot(pool, user.id)) });
+    res.json({ signedIn: true, user: accounts.userOut(user), ...(await accounts.usageSnapshot(pool, user.id)), billing: await require("./billing/service").billingState(pool, user.id) });
   }));
 }
 

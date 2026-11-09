@@ -6,6 +6,7 @@ const { promisify } = require("node:util");
 const { getPlan, DEFAULT_PLAN, planNames, GB } = require("./plans");
 const { HttpError } = require("./errors");
 const keys = require("./lib/keys");
+const packs = require("./billing/packs");
 
 const scrypt = promisify(crypto.scrypt);
 const SESSION_DAYS = 30;
@@ -123,11 +124,12 @@ async function activeRuns(pool, ownerId) {
 /** Everything the account page shows: usage against each limit. */
 async function usageSnapshot(pool, ownerId) {
   const plan = await planFor(pool, ownerId);
-  const [month, bytes, active] = await Promise.all([keys.monthUsage(pool, ownerId), storageBytes(pool, ownerId), activeRuns(pool, ownerId)]);
+  const isUser = /^[0-9a-f-]{36}$/i.test(String(ownerId || ""));
+  const [month, bytes, active, packMinutes] = await Promise.all([keys.monthUsage(pool, ownerId), storageBytes(pool, ownerId), activeRuns(pool, ownerId), isUser ? packs.remaining(pool, ownerId) : 0]);
   return {
     plan: { name: plan.name, label: plan.label },
     limits: { monthly_minutes: plan.monthlyMinutes, max_video_minutes: plan.maxVideoMinutes, max_upload_mb: plan.maxUploadMb, storage_gb: plan.storageGb, retention_days: plan.retentionDays, concurrent_runs: plan.concurrentRuns, api_access: plan.apiAccess, clips_per_run: plan.clipsPerRun },
-    usage: { minutes: month.minutes, runs: month.runs, clips: month.clips, storage_bytes: bytes, active_runs: active },
+    usage: { minutes: month.minutes, runs: month.runs, clips: month.clips, storage_bytes: bytes, active_runs: active, pack_minutes: Math.round(packMinutes * 10) / 10 },
   };
 }
 
@@ -138,7 +140,7 @@ async function usageSnapshot(pool, ownerId) {
 async function assertCanStart(pool, ownerId, { fileBytes = 0 } = {}) {
   const plan = await planFor(pool, ownerId);
   const month = await keys.monthUsage(pool, ownerId);
-  if (month.minutes >= plan.monthlyMinutes) throw new HttpError(402, `You've used all ${plan.monthlyMinutes} minutes of the ${plan.label} plan this month. They reset on the 1st (UTC), or move to a bigger plan.`, "quota_exceeded");
+  if (month.minutes >= plan.monthlyMinutes && !((await packs.remaining(pool, ownerId)) > 0)) throw new HttpError(402, `You've used all ${plan.monthlyMinutes} minutes of the ${plan.label} plan this month. They reset on the 1st (UTC). You can buy a top-up pack or move to a bigger plan.`, "quota_exceeded");
   if ((await activeRuns(pool, ownerId)) >= plan.concurrentRuns) throw new HttpError(429, `The ${plan.label} plan runs ${plan.concurrentRuns} video${plan.concurrentRuns === 1 ? "" : "s"} at a time. Wait for the current one to finish.`, "too_many_runs");
   if (fileBytes > plan.maxUploadMb * 1024 * 1024) throw new HttpError(413, `That file is over the ${plan.maxUploadMb} MB limit of the ${plan.label} plan.`, "file_too_large");
   if ((await storageBytes(pool, ownerId)) + fileBytes > plan.storageGb * GB) throw new HttpError(413, `You're out of storage (${plan.storageGb} GB on the ${plan.label} plan). Delete old runs to make room.`, "storage_full");

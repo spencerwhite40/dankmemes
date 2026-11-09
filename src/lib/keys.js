@@ -64,6 +64,7 @@ async function recordUsage(pool, job, clipCount) {
     "insert into usage_events (owner_id, api_key_id, job_id, source_seconds, clips) values ($1, $2, $3, $4, $5)",
     [job.owner_id, job.api_key_id || null, job.id, seconds, clipCount || 0],
   );
+  return seconds / 60;   // the minutes billed for this run
 }
 
 /** Minutes of source video processed this calendar month (UTC) and the number of runs. */

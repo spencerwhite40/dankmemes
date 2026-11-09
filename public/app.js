@@ -64,16 +64,98 @@ async function refreshPlan() {
     meter("Storage", usage.storage_bytes, limits.storage_gb * 1024 ** 3, `${gb(usage.storage_bytes)} of ${limits.storage_gb} GB`),
     meter("Running now", usage.active_runs, limits.concurrent_runs, `${usage.active_runs} of ${limits.concurrent_runs}`),
   );
-  $("plan-note").textContent = `Videos up to ${limits.max_video_minutes} minutes and ${limits.max_upload_mb} MB. Runs and clips are kept for ${limits.retention_days} days, then deleted.${limits.api_access ? "" : " API access needs a paid plan."}`;
+  const topUp = usage.pack_minutes > 0 ? ` Top-up minutes: ${usage.pack_minutes}.` : "";
+  $("plan-note").textContent = `Videos up to ${limits.max_video_minutes} minutes and ${limits.max_upload_mb} MB. Runs and clips are kept for ${limits.retention_days} days, then deleted.${limits.api_access ? "" : " API access needs a paid plan."}${topUp}`;
   $("keys-intro").textContent = limits.api_access ? "Let another app use your account through the API. A key is shown once, so copy it when it appears. See docs/api.md." : "API keys come with a paid plan.";
   $("key-form").hidden = !limits.api_access;
+}
+
+// ── pricing and checkout (Stripe hosts the payment page) ──────────────────
+let billing = null, period = "monthly";
+const snap = () => JSON.stringify(billing && [billing.plan_name, billing.current && billing.current.pack_minutes]);
+const money = (n) => `$${Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2)}`;
+async function pay(body, btn) {
+  $("billing-error").textContent = ""; btn.disabled = true;
+  try {
+    try { sessionStorage.setItem("mb_pay_before", snap()); } catch { /* private mode: the page then judges by the account's state alone */ }
+    const res = await fetch("/billing/checkout", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Couldn't start checkout.");
+    location.href = data.url;
+  } catch (err) { $("billing-error").textContent = err.message; btn.disabled = false; }
+}
+function renderPricing() {
+  if (!billing || !billing.enabled) { $("pricing-card").hidden = true; return; }
+  $("pricing-card").hidden = false;
+  const cur = billing.current || {}, mineName = billing.plan_name;
+  const subscribed = !!cur.status && cur.status !== "canceled";
+  const off = Math.round((1 - billing.plans[0].price_annual / billing.plans[0].price_monthly) * 100);
+  $("per-annual").textContent = `Annual · save ${off}%`;
+  $("per-monthly").classList.toggle("on", period === "monthly"); $("per-annual").classList.toggle("on", period === "annual");
+  $("plans").replaceChildren(...billing.plans.map((p) => {
+    const price = period === "annual" ? p.price_annual : p.price_monthly, ok = p.available[period];
+    const mine = mineName === p.name && subscribed;
+    const btn = el("button", { type: "button", textContent: mine ? "Your plan" : subscribed ? "Change in Manage billing" : ok ? `Choose ${p.label}` : "Not on sale yet", disabled: mine || subscribed || !ok });
+    btn.addEventListener("click", () => pay({ plan: p.name, period }, btn));
+    return el("div", { className: "plan" + (mine ? " mine" : "") },
+      el("strong", { textContent: p.label }),
+      el("span", { className: "price", textContent: `${money(price)}/mo` }),
+      el("span", { className: "muted", textContent: period === "annual" ? `billed ${money(price * 12)} a year` : "billed monthly" }),
+      el("span", { textContent: `${p.minutes} minutes a month` }), btn);
+  }));
+  $("packs").replaceChildren(...billing.packs.map((p) => {
+    const btn = el("button", { type: "button", textContent: p.available ? `Buy · ${money(p.price)}` : "Not on sale yet", disabled: !p.available });
+    btn.addEventListener("click", () => pay({ pack: p.key }, btn));
+    return el("div", { className: "plan" }, el("strong", { textContent: p.label }), el("span", { className: "price", textContent: money(p.price) }), btn);
+  }));
+  const bits = [];
+  if (cur.status === "canceling" && cur.renews_at) bits.push(`Your plan ends on ${new Date(cur.renews_at).toLocaleDateString()}.`);
+  else if (cur.status === "past_due") bits.push("Your last payment didn't go through. Update your card in Manage billing.");
+  else if (subscribed && cur.renews_at) bits.push(`Renews on ${new Date(cur.renews_at).toLocaleDateString()}.`);
+  if (cur.pack_minutes > 0) bits.push(`${cur.pack_minutes} top-up minutes left.`);
+  $("billing-note").textContent = bits.join(" ");
+  $("manage-billing").hidden = !cur.can_manage;
+}
+$("per-monthly").addEventListener("click", () => { period = "monthly"; renderPricing(); });
+$("per-annual").addEventListener("click", () => { period = "annual"; renderPricing(); });
+$("manage-billing").addEventListener("click", async () => {
+  $("billing-error").textContent = "";
+  try {
+    const res = await fetch("/billing/portal", { method: "POST", credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Couldn't open billing.");
+    location.href = data.url;
+  } catch (err) { $("billing-error").textContent = err.message; }
+});
+async function loadBilling() {
+  try {
+    billing = await fetch("/api/billing", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null));
+    if (billing) { const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json()); billing.plan_name = me.plan && me.plan.name; if (me.billing) billing.current = me.billing; }
+    renderPricing();
+  } catch { $("pricing-card").hidden = true; }
+}
+// Coming back from Stripe: the plan changes when Stripe's message reaches the server, which can take a few seconds.
+async function afterCheckout() {
+  const q = new URLSearchParams(location.search).get("billing");
+  if (!q) return;
+  history.replaceState(null, "", location.pathname);
+  if (q === "cancelled") { $("billing-note").textContent = "Checkout cancelled. You haven't been charged."; return; }
+  $("billing-note").textContent = "Thanks! Updating your account…";
+  let before = null; try { before = sessionStorage.getItem("mb_pay_before"); sessionStorage.removeItem("mb_pay_before"); } catch { /* ignore */ }
+  // Stripe's message may already have arrived, so look at once, then every 2 seconds for 20.
+  for (let i = 0; i < 11; i++) {
+    if (i) { await new Promise((r) => setTimeout(r, 2000)); await refreshPlan(); await loadBilling(); }
+    const paidUp = before ? snap() !== before : (billing.current && (billing.current.status || billing.current.pack_minutes > 0));
+    if (paidUp) { $("billing-note").textContent = "All set. Your account is updated."; return; }
+  }
+  $("billing-note").textContent = "Your payment is being processed. Refresh in a minute if your plan hasn't changed.";
 }
 
 // ── load ────────────────────────────────────────────────────────────────
 async function start() {
   const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json());
   if (!me.signedIn) return showLogin(me.signupsOpen !== false);
-  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false; await refreshPlan();
+  $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false; await refreshPlan(); await loadBilling(); afterCheckout();
   const [{ personas }, { videos }, { jobs }] = await Promise.all([api("/personas"), api("/videos"), api("/jobs")]);
   $("persona").replaceChildren(...personas.map((p) => el("option", { value: p.id, textContent: p.name })));
   $("previous").replaceChildren(el("option", { value: "", textContent: "None" }), ...videos.map((v) => el("option", { value: v.job_id, textContent: `${v.label}${v.duration ? ` · ${mmss(v.duration)}` : ""} · ${new Date(v.created_at).toLocaleDateString()}` })));

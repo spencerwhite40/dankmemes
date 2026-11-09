@@ -38,7 +38,7 @@ Everything heavy (shrinking video, rendering) happens in the runner. By default 
 
 ## Accounts and plans
 
-People sign up with an email and password; everything they make belongs to their account. A plan (free, creator, pro, agency) sets
+Payments (plans, annual or monthly, top-up packs) go through Stripe: see docs/billing.md and docs/pricing.md. People sign up with an email and password; everything they make belongs to their account. A plan (free, creator, pro, agency) sets
 their limits: monthly minutes, video length, upload size, storage, how long runs are kept, runs at once, API access, how much of their own
 rating history teaches their captions, and which AI models they get. See [docs/accounts.md](docs/accounts.md). Every AI call is metered
 per account ([docs/ai-providers.md](docs/ai-providers.md)).

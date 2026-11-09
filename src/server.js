@@ -12,11 +12,13 @@ const { registerMemeBuilderRoutes } = require("./routes");
 const { startMemeBuilderWorker } = require("./worker");
 const { asyncRoute } = require("./async-route");
 const { buildV1 } = require("./v1");
+const { registerBillingWebhook, registerBillingRoutes } = require("./billing/routes");
 
 function buildApp(pool) {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", 1);          // behind Render/Fly's proxy, so req.ip is the visitor (login rate limits depend on it)
+  registerBillingWebhook(app, { pool });   // before the JSON parser: the signature is over the raw bytes
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
@@ -24,6 +26,7 @@ function buildApp(pool) {
   const needUser = requireUser(pool);
   registerAuthRoutes(app, { pool, asyncRoute });
   registerAccountRoutes(app, { pool, asyncRoute, requireUser: needUser });
+  registerBillingRoutes(app, { pool, asyncRoute, requireUser: needUser });
   registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: needUser });
   app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 

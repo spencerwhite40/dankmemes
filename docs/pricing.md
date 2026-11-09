@@ -1,7 +1,7 @@
 # Pricing
 
 The numbers a customer sees. The plan prices and minutes live in `src/plans.js` (the one place to change them);
-this page records the decisions behind them. The app does not charge anyone yet: an admin sets a plan by hand.
+this page records the decisions behind them. Charging is built (Stripe Checkout and the customer portal, see `docs/billing.md`) but off until Stripe is set up; until then an admin sets a plan by hand.
 
 ## Plans
 
@@ -12,7 +12,7 @@ this page records the decisions behind them. The app does not charge anyone yet:
 | Pro | 600 | $90 | $76.50 | $918 |
 | Agency | 2,000 | $300 | $255 | $3,060 |
 
-## Top-up packs (not built yet)
+## Top-up packs
 
 | Pack | Minutes | Price |
 |---|---|---|
@@ -32,5 +32,5 @@ Pack minutes are used after the monthly minutes run out and last 12 months. A pa
 
 ## Not decided yet
 
-- Free-tier watermark, the cap on free caption rewrites, and the pack prices are proposals.
+- Free-tier watermark and the cap on free caption rewrites are proposals and not built. Pack prices are in `src/plans.js`.
 - Real clips per source minute and real cost per minute are unmeasured: run a handful of videos on the real providers before putting a clip count in marketing.

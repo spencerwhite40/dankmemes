@@ -137,3 +137,32 @@ create index if not exists sessions_user_idx on sessions (user_id);
 -- bytes stored per run's source video and per clip, so storage can be limited by plan
 alter table meme_builder_jobs  add column if not exists source_bytes bigint not null default 0;
 alter table meme_builder_clips add column if not exists bytes bigint not null default 0;
+
+-- ── Billing (Stripe) ───────────────────────────────────────────────────────────────────────────────────────────
+-- The columns, tables and indexes below run as part of the same single query as everything above, in order.
+alter table users add column if not exists stripe_customer_id     text;
+alter table users add column if not exists stripe_subscription_id text;
+alter table users add column if not exists billing_period         text;          -- 'monthly' | 'annual'
+alter table users add column if not exists plan_status            text;          -- active | canceling | past_due | canceled
+alter table users add column if not exists plan_renews_at         timestamptz;
+create unique index if not exists users_stripe_customer_idx on users (stripe_customer_id) where stripe_customer_id is not null;
+
+-- every Stripe event is handled once: its id is stored before it is acted on
+create table if not exists stripe_events (
+  id          text primary key,
+  type        text,
+  received_at timestamptz not null default now()
+);
+
+-- bought top-up minutes: used after the plan's monthly minutes, oldest-expiring first
+create table if not exists credit_packs (
+  id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references users(id) on delete cascade,
+  pack              text not null,
+  minutes           numeric not null,
+  remaining         numeric not null,
+  stripe_session_id text unique,
+  expires_at        timestamptz not null,
+  created_at        timestamptz not null default now()
+);
+create index if not exists credit_packs_user_idx on credit_packs (user_id, expires_at);

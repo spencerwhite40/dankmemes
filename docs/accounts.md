@@ -35,7 +35,7 @@ Where each limit is enforced: starting a run (minutes, runs at once, upload size
 the runner (video length for links, the model tier, the taste history), the API (access, rate), and a sweep every 6 hours (retention).
 The page shows each account its usage against the limits.
 
-A new account is on `free`. Until billing exists, an admin changes a plan:
+A new account is on `free`. Paying customers are moved by Stripe (see [billing.md](billing.md)). An admin can also change a plan by hand:
 
 ```bash
 npm run admin -- users

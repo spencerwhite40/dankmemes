@@ -37,6 +37,22 @@
         <p id="plan-note" class="muted"></p>
       </section>
 
+      <section class="card" id="pricing-card" hidden>
+        <h2>Plans</h2>
+        <div class="tabs" role="tablist">
+          <button type="button" id="per-monthly" class="tab on" role="tab">Monthly</button>
+          <button type="button" id="per-annual" class="tab" role="tab">Annual</button>
+        </div>
+        <div id="plans" class="plans"></div>
+        <p class="muted">Minutes are the length of the videos you submit, counted per month. Unused minutes don't roll over.</p>
+        <h3>Need more minutes this month?</h3>
+        <div id="packs" class="plans"></div>
+        <p class="muted">Top-up minutes are used after your monthly minutes and last a year.</p>
+        <p id="billing-note" class="muted"></p>
+        <button type="button" id="manage-billing" class="small" hidden>Manage billing</button>
+        <p id="billing-error" class="error" role="alert"></p>
+      </section>
+
       <section class="card">
         <h2>1. Who is it for?</h2>
         <select id="persona" aria-label="Audience"></select>
