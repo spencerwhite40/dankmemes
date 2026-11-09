@@ -40,6 +40,8 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     if (!verifyClip(id, req.query.exp, req.query.sig)) return fail(res, 403, "link_expired", "This link has expired or is not valid. Fetch the run again for a fresh link.");
     const clip = await store.getClip(pool, id);
     if (!clip) return fail(res, 404, "not_found", "not found");
+    const owner = await store.getJob(pool, clip.job_id);
+    if (owner && await accounts.isLocked(pool, owner.owner_id)) return fail(res, 403, "account_locked", "This account's subscription has ended.");
     await streamClipVideo(req, res, clip, { download: !!req.query.download });
   }));
 
@@ -49,6 +51,7 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     if (!m) return fail(res, 401, "no_key", "Send your API key as: Authorization: Bearer <key>");
     const key = await keys.findKey(pool, m[1]);
     if (!key) return fail(res, 401, "bad_key", "That API key is not valid or has been revoked.");
+    if (await accounts.isLocked(pool, key.owner_id)) return fail(res, 403, "account_locked", "This account's subscription has ended. Subscribe again to use the API.");
     const plan = await accounts.planFor(pool, key.owner_id);
     if (!plan.apiAccess) return fail(res, 403, "api_not_in_plan", `The ${plan.label} plan doesn't include API access.`);
     const rate = limiter.check(key.id, Math.min(key.rate_limit_per_min, plan.ratePerMin));

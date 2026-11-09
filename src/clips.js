@@ -6,6 +6,7 @@ const { regenerateCaption } = require("./lib/captions");
 const { tasteFromRatings } = require("./lib/personas");
 const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { rerenderClip } = require("./lib/pipeline");
+const { watermarkText } = require("./lib/render");
 const accounts = require("./accounts");
 const { HttpError } = require("./errors");
 
@@ -27,7 +28,10 @@ function findMoment(analysis, clip) {
 
 /** Burn a new caption into a clip: re-render from the stored source, swap the file, update the row. */
 async function applyCaption(pool, clip, caption) {
-  const newUri = await rerenderClip(pool, clip, caption);
+  const job = await store.getJob(pool, clip.job_id);
+  const plan = await accounts.planFor(pool, job && job.owner_id);
+  // the mark follows the plan the account is on now: a plan with a watermark can never get a clean copy by re-rendering
+  const newUri = await rerenderClip(pool, clip, caption, { watermark: plan.watermark ? watermarkText() : null });
   const oldUri = clip.storage_uri;
   const bytes = await storage.sizeOf(newUri).catch(() => 0);
   await pool.query("update public.meme_builder_clips set storage_uri = $2, bytes = $3 where id = $1", [clip.id, newUri, bytes]);

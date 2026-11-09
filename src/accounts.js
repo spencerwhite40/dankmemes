@@ -32,7 +32,7 @@ const dummy = async () => (dummyHash = dummyHash || (await hashPassword("not-a-r
 const normEmail = (e) => String(e || "").trim().toLowerCase();
 const adminEmails = () => String(process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 
-const userOut = (u) => ({ id: u.id, email: u.email, name: u.name || null, plan: u.plan, is_admin: !!u.is_admin, created_at: u.created_at });
+const userOut = (u) => ({ id: u.id, email: u.email, name: u.name || null, plan: u.plan, is_admin: !!u.is_admin, locked: !!u.locked_at, created_at: u.created_at });
 
 function checkCredentials(email, password) {
   if (!EMAIL_RE.test(email)) throw new HttpError(400, "Enter a valid email address.", "bad_email");
@@ -96,8 +96,15 @@ async function setPassword(pool, userId, password) {
 }
 async function setPlan(pool, userId, plan) {
   if (!planNames().includes(plan)) throw new Error(`Unknown plan "${plan}". Plans: ${planNames().join(", ")}`);
-  const r = await pool.query("update users set plan = $2 where id = $1", [userId, plan]);
+  // moving to a paid plan by hand also unlocks the account
+  const r = await pool.query("update users set plan = $2, locked_at = case when $2 = 'free' then locked_at else null end where id = $1", [userId, plan]);
   return r.rowCount > 0;
+}
+/** Is this owner's account locked (its subscription ended)? Owners with no account are not. */
+async function isLocked(pool, ownerId) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(ownerId || ""))) return false;
+  const { rows } = await pool.query("select locked_at is not null as locked from users where id = $1", [ownerId]);
+  return !!(rows[0] && rows[0].locked);
 }
 
 // ── What an account is allowed ──────────────────────────────────────────────────────────────────────────────
@@ -128,7 +135,7 @@ async function usageSnapshot(pool, ownerId) {
   const [month, bytes, active, packMinutes] = await Promise.all([keys.monthUsage(pool, ownerId), storageBytes(pool, ownerId), activeRuns(pool, ownerId), isUser ? packs.remaining(pool, ownerId) : 0]);
   return {
     plan: { name: plan.name, label: plan.label },
-    limits: { monthly_minutes: plan.monthlyMinutes, max_video_minutes: plan.maxVideoMinutes, max_upload_mb: plan.maxUploadMb, storage_gb: plan.storageGb, retention_days: plan.retentionDays, concurrent_runs: plan.concurrentRuns, api_access: plan.apiAccess, clips_per_run: plan.clipsPerRun },
+    limits: { monthly_minutes: plan.monthlyMinutes, max_video_minutes: plan.maxVideoMinutes, max_upload_mb: plan.maxUploadMb, storage_gb: plan.storageGb, retention_days: plan.retentionDays, concurrent_runs: plan.concurrentRuns, api_access: plan.apiAccess, clips_per_run: plan.clipsPerRun, watermark: !!plan.watermark },
     usage: { minutes: month.minutes, runs: month.runs, clips: month.clips, storage_bytes: bytes, active_runs: active, pack_minutes: Math.round(packMinutes * 10) / 10 },
   };
 }
@@ -149,5 +156,5 @@ async function assertCanStart(pool, ownerId, { fileBytes = 0 } = {}) {
 
 module.exports = {
   hashPassword, verifyPassword, signup, authenticate, createSession, userForSession, endSession, endAllSessions, setPassword, setPlan,
-  planFor, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
+  planFor, isLocked, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
 };

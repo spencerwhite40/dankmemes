@@ -1,5 +1,6 @@
 "use strict";
 // Plans keep a run (its video and clips) for a number of days; this deletes the ones past that. Safe to run any time, and from several machines.
+// Locked accounts (a cancelled subscription) are skipped: their media is kept for when they come back.
 const store = require("./lib/store");
 const storage = require("./lib/storage");
 const { planNames, getPlan } = require("./plans");
@@ -11,7 +12,7 @@ async function sweep(pool, { log = console } = {}) {
     const days = getPlan(name).retentionDays;
     const { rows } = await pool.query(
       `select j.id from meme_builder_jobs j join users u on u.id::text = j.owner_id
-        where u.plan = $1 and j.status in ('done','error') and j.created_at < now() - ($2 || ' days')::interval limit 200`,
+        where u.plan = $1 and u.locked_at is null and j.status in ('done','error') and j.created_at < now() - ($2 || ' days')::interval limit 200`,
       [name, String(days)],
     );
     for (const { id } of rows) {

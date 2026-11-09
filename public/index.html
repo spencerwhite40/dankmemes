@@ -31,6 +31,12 @@
 
     <!-- The whole flow -->
     <div id="app" hidden>
+      <section class="card" id="locked-card" hidden>
+        <h2>Your subscription has ended</h2>
+        <p id="locked-text"></p>
+        <p class="muted">Nothing has been deleted. Subscribe again and your videos, clips and top-up minutes are back exactly as you left them.</p>
+      </section>
+
       <section class="card" id="plan-card">
         <h2>Your plan: <span id="plan-name"></span></h2>
         <div id="meters" class="meters"></div>
@@ -45,11 +51,25 @@
         </div>
         <div id="plans" class="plans"></div>
         <p class="muted">Minutes are the length of the videos you submit, counted per month. Unused minutes don't roll over.</p>
-        <h3>Need more minutes this month?</h3>
-        <div id="packs" class="plans"></div>
-        <p class="muted">Top-up minutes are used after your monthly minutes and last a year.</p>
+        <div id="packs-wrap">
+          <h3>Need more minutes this month?</h3>
+          <div id="packs" class="plans"></div>
+          <p class="muted">Top-up packs are for subscribers. Their minutes are used after your monthly minutes and never expire.</p>
+        </div>
         <p id="billing-note" class="muted"></p>
-        <button type="button" id="manage-billing" class="small" hidden>Manage billing</button>
+        <div id="cancel-panel" class="note" hidden>
+          <p id="cancel-text"></p>
+          <div class="row">
+            <button type="button" id="cancel-stay" hidden></button>
+            <button type="button" id="cancel-go" class="small"></button>
+            <button type="button" id="cancel-keep" class="small">Keep my plan</button>
+          </div>
+        </div>
+        <div class="row">
+          <button type="button" id="manage-billing" class="small" hidden>Manage billing</button>
+          <button type="button" id="cancel-btn" class="link" hidden>Cancel subscription</button>
+          <button type="button" id="resume-btn" class="small" hidden>Keep my subscription</button>
+        </div>
         <p id="billing-error" class="error" role="alert"></p>
       </section>
 

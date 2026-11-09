@@ -22,7 +22,7 @@ const { analyzeVideo, planSpans, fallbackSpans, ANALYSIS_VERSION } = require("./
 const { writeCaptions, selectClips } = require("./captions");
 const { refineMoments } = require("./refine");
 const { snapBounds, dropOverlaps, mapLimit } = require("./cuts");
-const { renderClip } = require("./render");
+const { renderClip, watermarkText } = require("./render");
 const { uploadFile, ledger } = require("./ai");
 const { tasteFromRatings } = require("./personas");
 
@@ -147,7 +147,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       const out = path.join(workDir, name);
       try {
         const cut = snapBounds(c.moment, silences, meta.duration);
-        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
+        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark: plan && plan.watermark ? watermarkText() : null, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
         const clipBytes = (await fs.promises.stat(out)).size;
         const uri = await storage.putFile(out, `${job.id}/${Date.now()}-${name}`, "video/mp4");
         // Saved the moment it exists: the page shows it (and the Library lists it) while the rest still render.
@@ -172,7 +172,8 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
 }
 
 /** Re-render one clip with new caption text (used by the "Update caption" button). */
-async function rerenderClip(pool, clip, caption) {
+/** watermark: the mark's words for plans that have one, else null (the caller knows the account's plan). */
+async function rerenderClip(pool, clip, caption, { watermark = null } = {}) {
   const job = await store.getJob(pool, clip.job_id);
   if (!job || !job.source_uri) throw new Error("The source video for this clip is no longer stored.");
   const workDir = await storage.makeWorkDir(`rerender-${clip.id}`);
@@ -184,7 +185,7 @@ async function rerenderClip(pool, clip, caption) {
       throw storage.isNotFound(err) ? new Error(storage.SOURCE_GONE) : err;
     }
     const out = path.join(workDir, "clip.mp4");
-    await renderClip({ source: sourceFile, startSec: Number(clip.start_sec), endSec: Number(clip.end_sec), caption, out });
+    await renderClip({ source: sourceFile, startSec: Number(clip.start_sec), endSec: Number(clip.end_sec), caption, out, watermark });
     const uri = await storage.putFile(out, `${job.id}/${Date.now()}-clip-${String(clip.n).padStart(2, "0")}.mp4`, "video/mp4");
     return uri;
   } finally {

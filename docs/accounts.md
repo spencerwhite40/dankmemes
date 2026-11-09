@@ -18,6 +18,8 @@ The limits live in one file, `src/plans.js`, and every limit in the app follows 
 
 | Limit | What it controls |
 |---|---|
+| `watermark` | every clip rendered on this plan has a burned-in, unremovable mark |
+| `retentionPack` | the free pack offered to a monthly subscriber who starts to cancel and stays one more month |
 | `monthlyMinutes` | minutes of source video processed per calendar month (UTC). Counts the length of each video submitted, rounded up. Unused minutes do not roll over |
 | `priceMonthly`, `priceAnnual` | dollars per month, paid monthly or yearly (the yearly price is the slight discount). Not charged by the app yet |
 | `maxVideoMinutes` | longest single video |

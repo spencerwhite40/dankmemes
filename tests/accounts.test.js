@@ -17,7 +17,7 @@ describe("plans and passwords (no database)", () => {
   test("every plan defines every limit, and bigger plans never allow less", () => {
     const fields = ["monthlyMinutes", "maxVideoMinutes", "maxUploadMb", "storageGb", "retentionDays", "concurrentRuns", "ratePerMin", "tasteExamples", "clipsPerRun"];
     for (const n of planNames()) for (const f of fields) assert.ok(Number.isFinite(PLANS[n][f]) && PLANS[n][f] > 0, `${n}.${f}`);
-    const order = ["free", "creator", "pro", "agency"];
+    const order = ["free", "starter", "creator", "pro", "agency"];
     for (let i = 1; i < order.length; i++) for (const f of fields) assert.ok(PLANS[order[i]][f] >= PLANS[order[i - 1]][f], `${order[i]}.${f} is not below ${order[i - 1]}`);
     assert.equal(PLANS.free.apiAccess, false); assert.equal(PLANS.creator.apiAccess, true);
     assert.equal(PLANS.free.models, "standard"); assert.equal(PLANS.pro.models, "premium");

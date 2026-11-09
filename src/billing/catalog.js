@@ -23,7 +23,7 @@ function publicCatalog() {
     enabled: stripe.enabled(),
     plans: paidPlanNames().map((name) => ({
       name, label: PLANS[name].label, minutes: PLANS[name].monthlyMinutes,
-      price_monthly: PLANS[name].priceMonthly, price_annual: PLANS[name].priceAnnual,
+      price_monthly: PLANS[name].priceMonthly, price_annual: PLANS[name].priceAnnual, watermark: !!PLANS[name].watermark,
       available: { monthly: !!planPriceId(name, "monthly"), annual: !!planPriceId(name, "annual") },
     })),
     packs: Object.entries(PACKS).map(([key, p]) => ({ key, label: p.label, minutes: p.minutes, price: p.price, available: !!packPriceId(key) })),

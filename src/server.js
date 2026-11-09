@@ -6,7 +6,7 @@ const express = require("express");
 
 const { makePool } = require("./db");
 const { migrate } = require("./migrate");
-const { requireUser, registerAuthRoutes } = require("./auth");
+const { requireUser, requireActiveUser, registerAuthRoutes } = require("./auth");
 const { registerAccountRoutes } = require("./account-routes");
 const { registerMemeBuilderRoutes } = require("./routes");
 const { startMemeBuilderWorker } = require("./worker");
@@ -23,11 +23,12 @@ function buildApp(pool) {
   app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
-  const needUser = requireUser(pool);
+  const needUser = requireUser(pool);              // signed in (a locked account may still reach billing)
+  const needActive = requireActiveUser(pool);      // signed in and not locked: for media, runs, keys
   registerAuthRoutes(app, { pool, asyncRoute });
-  registerAccountRoutes(app, { pool, asyncRoute, requireUser: needUser });
+  registerAccountRoutes(app, { pool, asyncRoute, requireUser: needActive });
   registerBillingRoutes(app, { pool, asyncRoute, requireUser: needUser });
-  registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: needUser });
+  registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: needActive });
   app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 
   app.use(express.static(path.join(__dirname, "..", "public")));

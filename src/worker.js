@@ -66,6 +66,10 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
         const job = await store.claimNextJob(pool);
         if (!job) return;
         log.log(`[meme-builder] job ${job.id} started (attempt ${job.attempts})`);
+        if (await accounts.isLocked(pool, job.owner_id).catch(() => false)) {
+          await store.failJob(pool, job.id, "This account's subscription has ended, so the run was not started.").catch(() => {});
+          continue;
+        }
         try {
           const plan = await accounts.planFor(pool, job.owner_id);
           await withTimeout(ledger.runWithContext({ ownerId: job.owner_id, jobId: job.id, stage: "starting", tier: plan.models }, () => run(pool, job, { log, plan })), MAX_JOB_MS);

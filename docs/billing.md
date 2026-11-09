@@ -14,15 +14,23 @@ Billing is **off until `STRIPE_SECRET_KEY` is set**: the pricing section stays h
 | The app | checks the signature, then sets their plan (subscription) or adds minutes (top-up pack) |
 | They return to the app | the page notices the change and says so |
 | Plan change, cancel, card update | the customer opens **Manage billing** (Stripe's portal). Stripe's events keep the app in step |
-| Cancel | the plan stays until the period ends, then the account drops to Free |
+| Cancel | in the app: a monthly subscriber is first offered a free pack for staying one more month; if they still cancel, the app tells Stripe to stop at the period's end. The plan stays until then, then the account drops to Free **and locks** (see below) |
+| Stay | accepting the offer adds nothing yet; the pack is added when Stripe reports the next monthly payment (`invoice.paid`, reason `subscription_cycle`). Cancelling afterwards withdraws it |
+| Resume | before the period ends, "Keep my subscription" tells Stripe to keep renewing |
 | Card fails | the account shows "past due" and keeps its plan while Stripe retries; if Stripe gives up, it drops to Free |
 
 Every event is handled once (its id is stored first), a failed event is retried by Stripe, and an unsigned or stale request changes nothing.
 An account whose plan was set by hand with `npm run admin -- set-plan` is never touched by Stripe events.
 
 Minutes: a plan's minutes are counted per calendar month (UTC) and do not roll over, whether the customer pays monthly or yearly.
-A yearly customer pays once but gets each month's minutes as that month comes. Top-up packs are used only after the month's
-plan minutes are gone, oldest-expiring first, and last 12 months.
+A yearly customer pays once but gets each month's minutes as that month comes. Top-up packs can only be bought by subscribers, are used
+only after the month's plan minutes are gone, oldest pack first, and **never expire**.
+
+**Locked accounts.** When a subscription ends (cancelled period over, or Stripe gives up on an unpaid one) the account is set to Free and locked.
+Locked means: the page shows only a "your subscription has ended, subscribe again" screen, every endpoint for runs, clips, audiences, uploads and
+API keys answers 402 `account_locked`, API keys and old playback links answer 403, queued runs are not started, top-up minutes cannot be seen or spent,
+and the retention sweep never deletes the account's runs. Nothing is removed. A new subscription (checkout or an admin setting a paid plan) unlocks
+it and everything is back. Storage for locked accounts is therefore kept indefinitely; if that becomes a cost, decide on a limit and add a sweep for it.
 
 ## Setting it up (do it in Stripe's test mode first)
 
@@ -30,6 +38,8 @@ plan minutes are gone, oldest-expiring first, and last 12 months.
 
    | Product | Price | Billing | Env var |
    |---|---|---|---|
+   | Starter | $15 | recurring, monthly | `STRIPE_PRICE_STARTER_MONTHLY` |
+   | Starter | $153 | recurring, yearly | `STRIPE_PRICE_STARTER_ANNUAL` |
    | Creator | $30 | recurring, monthly | `STRIPE_PRICE_CREATOR_MONTHLY` |
    | Creator | $306 | recurring, yearly | `STRIPE_PRICE_CREATOR_ANNUAL` |
    | Pro | $90 | recurring, monthly | `STRIPE_PRICE_PRO_MONTHLY` |
@@ -46,10 +56,12 @@ plan minutes are gone, oldest-expiring first, and last 12 months.
 
 2. **Webhook.** Developers, Webhooks, add an endpoint: `https://YOUR-APP/billing/webhook`, listening for
    `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `customer.subscription.created`,
-   `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`. Copy its signing secret (`whsec_...`).
+   `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`. Copy its signing secret (`whsec_...`).
 
-3. **Customer portal.** Settings, Billing, Customer portal: turn on cancelling (at the end of the period), updating the payment method,
-   invoice history and switching plans. Add the three plan products (both prices each) as the plans a customer may switch between.
+3. **Customer portal.** Settings, Billing, Customer portal: turn on updating the payment method, invoice history and switching plans
+   (add the four plan products, both prices each, as the plans a customer may switch between). **Leave cancelling OFF in the portal**:
+   cancelling is done in the app, where a monthly subscriber first sees the offer to stay. (If cancelling is on in the portal, it still works,
+   the account still locks when the period ends, but the person skips the offer.)
 
 4. **Failed payments.** Settings, Billing, Subscriptions and emails: keep Smart Retries on, and set the subscription to be cancelled if all retries fail.
 

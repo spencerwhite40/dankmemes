@@ -28,6 +28,16 @@ function requireUser(pool) {
   };
 }
 
+/** Like requireUser, but a locked account (its subscription ended) gets 402: its media and credits are kept, not reachable. */
+function requireActiveUser(pool) {
+  const base = requireUser(pool);
+  return (req, res, next) => base(req, res, (err) => {
+    if (err) return next(err);
+    if (req.user.locked) return res.status(402).json({ error: "Your subscription has ended. Subscribe again to get your videos, clips and credits back.", code: "account_locked" });
+    next();
+  });
+}
+
 function registerAuthRoutes(app, { pool, asyncRoute }) {
   // Slows password guessing: 8 tries per email+address per 15 minutes, and 30 sign-ups an hour per address.
   const loginLimiter = createLimiter({ windowMs: 15 * 60 * 1000 });
@@ -71,4 +81,4 @@ function registerAuthRoutes(app, { pool, asyncRoute }) {
   }));
 }
 
-module.exports = { requireUser, registerAuthRoutes, readCookie };
+module.exports = { requireUser, requireActiveUser, registerAuthRoutes, readCookie };

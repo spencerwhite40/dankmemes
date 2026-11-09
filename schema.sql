@@ -162,7 +162,14 @@ create table if not exists credit_packs (
   minutes           numeric not null,
   remaining         numeric not null,
   stripe_session_id text unique,
-  expires_at        timestamptz not null,
   created_at        timestamptz not null default now()
 );
-create index if not exists credit_packs_user_idx on credit_packs (user_id, expires_at);
+-- pack minutes never expire (an earlier version expired them after a year)
+alter table credit_packs drop column if exists expires_at;
+create index if not exists credit_packs_user_idx on credit_packs (user_id, created_at);
+
+-- A cancelled subscription locks the account: nothing is deleted, nothing can be reached, and a new subscription unlocks it.
+alter table users add column if not exists locked_at timestamptz;
+-- "Stay another month" offer: the pack promised (granted when the next monthly payment succeeds) and when one was last accepted
+alter table users add column if not exists retention_offer_pack    text;
+alter table users add column if not exists retention_offer_used_at timestamptz;

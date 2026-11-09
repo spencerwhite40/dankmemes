@@ -65,7 +65,7 @@ async function refreshPlan() {
     meter("Running now", usage.active_runs, limits.concurrent_runs, `${usage.active_runs} of ${limits.concurrent_runs}`),
   );
   const topUp = usage.pack_minutes > 0 ? ` Top-up minutes: ${usage.pack_minutes}.` : "";
-  $("plan-note").textContent = `Videos up to ${limits.max_video_minutes} minutes and ${limits.max_upload_mb} MB. Runs and clips are kept for ${limits.retention_days} days, then deleted.${limits.api_access ? "" : " API access needs a paid plan."}${topUp}`;
+  $("plan-note").textContent = `Videos up to ${limits.max_video_minutes} minutes and ${limits.max_upload_mb} MB. Runs and clips are kept for ${limits.retention_days} days, then deleted.${limits.api_access ? "" : " API access needs a paid plan."}${limits.watermark ? " Clips carry a watermark; Creator and above have none." : ""}${topUp}`;
   $("keys-intro").textContent = limits.api_access ? "Let another app use your account through the API. A key is shown once, so copy it when it appears. See docs/api.md." : "API keys come with a paid plan.";
   $("key-form").hidden = !limits.api_access;
 }
@@ -101,8 +101,9 @@ function renderPricing() {
       el("strong", { textContent: p.label }),
       el("span", { className: "price", textContent: `${money(price)}/mo` }),
       el("span", { className: "muted", textContent: period === "annual" ? `billed ${money(price * 12)} a year` : "billed monthly" }),
-      el("span", { textContent: `${p.minutes} minutes a month` }), btn);
+      el("span", { textContent: `${p.minutes} minutes a month` }), el("span", { className: "muted", textContent: p.watermark ? "Clips carry a watermark" : "No watermark" }), btn);
   }));
+  $("packs-wrap").hidden = !cur.can_buy_packs;
   $("packs").replaceChildren(...billing.packs.map((p) => {
     const btn = el("button", { type: "button", textContent: p.available ? `Buy · ${money(p.price)}` : "Not on sale yet", disabled: !p.available });
     btn.addEventListener("click", () => pay({ pack: p.key }, btn));
@@ -111,12 +112,16 @@ function renderPricing() {
       el("span", { className: "muted", textContent: `$${(p.price / p.minutes).toFixed(2)} a minute${best ? " · best value" : ""}` }), btn);
   }));
   const bits = [];
-  if (cur.status === "canceling" && cur.renews_at) bits.push(`Your plan ends on ${new Date(cur.renews_at).toLocaleDateString()}.`);
+  if (cur.status === "canceling") bits.push(`Your plan ends${cur.renews_at ? ` on ${new Date(cur.renews_at).toLocaleDateString()}` : " at the end of this period"}. After that your account is locked until you subscribe again.`);
   else if (cur.status === "past_due") bits.push("Your last payment didn't go through. Update your card in Manage billing.");
   else if (subscribed && cur.renews_at) bits.push(`Renews on ${new Date(cur.renews_at).toLocaleDateString()}.`);
   if (cur.pack_minutes > 0) bits.push(`${cur.pack_minutes} top-up minutes left.`);
+  if (cur.offer_pending) bits.push(`Thanks for staying: ${cur.offer_pending.minutes} top-up minutes will be added after your next payment.`);
+  if (!$("cancel-panel").hidden) bits.length = 0;
   $("billing-note").textContent = bits.join(" ");
   $("manage-billing").hidden = !cur.can_manage;
+  $("cancel-btn").hidden = !(cur.status === "active" || cur.status === "past_due") || !$("cancel-panel").hidden;
+  $("resume-btn").hidden = cur.status !== "canceling";
 }
 $("per-monthly").addEventListener("click", () => { period = "monthly"; renderPricing(); });
 $("per-annual").addEventListener("click", () => { period = "annual"; renderPricing(); });
@@ -153,11 +158,59 @@ async function afterCheckout() {
   $("billing-note").textContent = "Your payment is being processed. Refresh in a minute if your plan hasn't changed.";
 }
 
+// ── cancelling: the offer to stay, then a plain warning ────────────────────
+async function billingPost(path) {
+  const res = await fetch(path, { method: "POST", credentials: "same-origin" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "That didn't work.");
+  return data;
+}
+async function afterBillingChange(note) { await refreshPlan(); await loadBilling(); if (note) $("billing-note").textContent = note; }
+function closeCancel() { $("cancel-panel").hidden = true; renderPricing(); }
+function confirmStep() {
+  const cur = billing.current || {}, when = cur.renews_at ? new Date(cur.renews_at).toLocaleDateString() : "the end of this period";
+  $("cancel-text").textContent = `Cancel your subscription? You keep your plan until ${when}. After that your account is locked: you can't reach your videos, clips or top-up minutes until you subscribe again. Nothing is deleted, and it all comes back when you do.`;
+  $("cancel-stay").hidden = true; $("cancel-go").textContent = "Yes, cancel my subscription";
+  $("cancel-go").onclick = async () => {
+    $("billing-error").textContent = "";
+    try { await billingPost("/billing/cancel"); $("cancel-panel").hidden = true; await afterBillingChange(); } catch (err) { $("billing-error").textContent = err.message; }
+  };
+}
+$("cancel-btn").addEventListener("click", () => {
+  const offer = billing && billing.current && billing.current.offer;
+  $("cancel-panel").hidden = false; $("cancel-btn").hidden = true; $("billing-note").textContent = "";
+  if (!offer) return confirmStep();
+  $("cancel-text").textContent = `Before you go: stay subscribed one more month and we'll add ${offer.minutes} top-up minutes to your account after your next payment. They never expire.`;
+  $("cancel-stay").hidden = false; $("cancel-stay").textContent = `Stay and get ${offer.minutes} minutes`;
+  $("cancel-stay").onclick = async () => {
+    $("billing-error").textContent = "";
+    try { await billingPost("/billing/offer/accept"); $("cancel-panel").hidden = true; await afterBillingChange(); } catch (err) { $("billing-error").textContent = err.message; }
+  };
+  $("cancel-go").textContent = "No thanks, cancel";
+  $("cancel-go").onclick = confirmStep;
+});
+$("cancel-keep").addEventListener("click", closeCancel);
+$("resume-btn").addEventListener("click", async () => {
+  $("billing-error").textContent = "";
+  try { await billingPost("/billing/resume"); await afterBillingChange("Welcome back. Your subscription will keep renewing."); } catch (err) { $("billing-error").textContent = err.message; }
+});
+
+// A cancelled subscription locks the account: the page shows only how to subscribe again.
+function showLocked(me) {
+  $("app").classList.add("locked"); $("locked-card").hidden = false;
+  const saved = (me.billing && me.billing.saved) || {};
+  const bits = [];
+  if (saved.runs) bits.push(`${saved.runs} run${saved.runs === 1 ? "" : "s"} with their clips`);
+  if (saved.pack_minutes) bits.push(`${saved.pack_minutes} top-up minutes`);
+  $("locked-text").textContent = bits.length ? `Waiting for you: ${bits.join(" and ")}.` : "Subscribe to start making clips again.";
+}
+
 // ── load ────────────────────────────────────────────────────────────────
 async function start() {
   const me = await fetch("/api/me", { credentials: "same-origin" }).then((r) => r.json());
   if (!me.signedIn) return showLogin(me.signupsOpen !== false);
   $("login").hidden = true; $("app").hidden = false; $("logout").hidden = false; await refreshPlan(); await loadBilling(); afterCheckout();
+  if (me.user.locked) return showLocked(me);   // nothing else of the account is reachable until they subscribe again
   const [{ personas }, { videos }, { jobs }] = await Promise.all([api("/personas"), api("/videos"), api("/jobs")]);
   $("persona").replaceChildren(...personas.map((p) => el("option", { value: p.id, textContent: p.name })));
   $("previous").replaceChildren(el("option", { value: "", textContent: "None" }), ...videos.map((v) => el("option", { value: v.job_id, textContent: `${v.label}${v.duration ? ` · ${mmss(v.duration)}` : ""} · ${new Date(v.created_at).toLocaleDateString()}` })));

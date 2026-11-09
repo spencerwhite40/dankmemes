@@ -1,10 +1,18 @@
 "use strict";
-// Top-up minutes. A pack is bought once, lasts PACK_MONTHS months, and is used only after the plan's monthly minutes are gone.
-const { PACKS, PACK_MONTHS } = require("../plans");
+// Top-up minutes. A pack is bought once by a subscriber, never expires, and is used only after the plan's monthly minutes are gone.
+// While an account is locked (its subscription ended) its packs are kept but cannot be seen or spent; they come back with a new subscription.
+const { PACKS } = require("../plans");
 
 async function remaining(pool, userId) {
   if (!/^[0-9a-f-]{36}$/i.test(String(userId || ""))) return 0;   // owners with no account (the old "default") have no packs
-  const { rows } = await pool.query("select coalesce(sum(remaining), 0) as n from credit_packs where user_id = $1 and remaining > 0 and expires_at > now()", [userId]);
+  const { rows } = await pool.query(
+    "select coalesce(sum(p.remaining), 0) as n from credit_packs p join users u on u.id = p.user_id where p.user_id = $1 and p.remaining > 0 and u.locked_at is null", [userId]);
+  return Number(rows[0].n);
+}
+
+/** What a locked account has waiting for it (shown on the reactivate screen). */
+async function saved(pool, userId) {
+  const { rows } = await pool.query("select coalesce(sum(remaining), 0) as n from credit_packs where user_id = $1 and remaining > 0", [userId]);
   return Number(rows[0].n);
 }
 
@@ -13,21 +21,21 @@ async function grant(pool, userId, packKey, stripeSessionId) {
   const pack = PACKS[packKey];
   if (!pack) return false;
   const { rowCount } = await pool.query(
-    `insert into credit_packs (user_id, pack, minutes, remaining, stripe_session_id, expires_at)
-     values ($1, $2, $3, $3, $4, now() + ($5 || ' months')::interval) on conflict (stripe_session_id) do nothing`,
-    [userId, packKey, pack.minutes, stripeSessionId, String(PACK_MONTHS)],
+    `insert into credit_packs (user_id, pack, minutes, remaining, stripe_session_id)
+     values ($1, $2, $3, $3, $4) on conflict (stripe_session_id) do nothing`,
+    [userId, packKey, pack.minutes, stripeSessionId],
   );
   return rowCount === 1;
 }
 
-/** Takes minutes off the packs, the ones that expire first going first. Never goes below zero. */
+/** Takes minutes off the packs, the oldest first. Never goes below zero. */
 async function consume(pool, userId, minutes) {
   let left = Number(minutes);
   if (!(left > 0)) return 0;
   const client = await pool.connect();
   try {
     await client.query("begin");
-    const { rows } = await client.query("select id, remaining from credit_packs where user_id = $1 and remaining > 0 and expires_at > now() order by expires_at, created_at for update", [userId]);
+    const { rows } = await client.query("select p.id, p.remaining from credit_packs p join users u on u.id = p.user_id where p.user_id = $1 and p.remaining > 0 and u.locked_at is null order by p.created_at, p.id for update of p", [userId]);
     for (const r of rows) {
       if (left <= 0) break;
       const take = Math.min(Number(r.remaining), left);
@@ -49,4 +57,4 @@ async function consumeOverage(pool, userId, plan, usedBefore, runMinutes) {
   return over > 0 ? consume(pool, userId, over) : 0;
 }
 
-module.exports = { remaining, grant, consume, consumeOverage };
+module.exports = { remaining, saved, grant, consume, consumeOverage };

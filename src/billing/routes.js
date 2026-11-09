@@ -34,6 +34,15 @@ function registerBillingRoutes(app, { pool, asyncRoute, requireUser }) {
     const b = req.body || {};
     res.json(await service.startCheckout(pool, req.user, req, { plan: b.plan, period: b.period, pack: b.pack }));
   }));
+  app.post("/billing/offer/accept", requireUser, handle(async (req, res) => { res.json(await service.acceptOffer(pool, req.user)); }));
+  app.post("/billing/cancel", requireUser, handle(async (req, res) => {
+    if (!stripe.enabled()) throw new HttpError(503, "Billing isn't set up yet.", "billing_off");
+    res.json(await service.cancelSubscription(pool, req.user));
+  }));
+  app.post("/billing/resume", requireUser, handle(async (req, res) => {
+    if (!stripe.enabled()) throw new HttpError(503, "Billing isn't set up yet.", "billing_off");
+    res.json(await service.resumeSubscription(pool, req.user));
+  }));
   app.post("/billing/portal", requireUser, handle(async (req, res) => {
     if (!stripe.enabled()) throw new HttpError(503, "Billing isn't set up yet.", "billing_off");
     res.json(await service.openPortal(pool, req.user, req));

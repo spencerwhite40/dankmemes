@@ -35,8 +35,32 @@ function assText(caption) {
     .replace(/\n/g, "\\N");
 }
 
-/** Whole .ass file for one caption shown for `seconds` seconds (PlayRes matches the 1080x1920 output). */
-function buildAss(caption, seconds) {
+// ── The watermark (plans that have one) ──────────────────────────────────
+// It is part of the picture: drawn by libass in the same pass as the caption, so it is in every frame of the file that is stored.
+// No clean copy is kept anywhere, so there is nothing to download that lacks it. It moves between four spots every three seconds
+// (on the video and below it), so cropping one strip off the frame doesn't remove it.
+const WATERMARK_SPOTS = [[300, 1180], [780, 1700], [300, 1560], [780, 1330]];
+const WATERMARK_EVERY_SEC = 3;
+/** The words in the mark: WATERMARK_TEXT, else a default. Pure apart from the environment. */
+function watermarkText() {
+  const t = String(process.env.WATERMARK_TEXT || "made with dankmemes").replace(/[{}\\\n\r]/g, " ").trim().slice(0, 60);
+  return t || "made with dankmemes";
+}
+const assClock = (sec) => {
+  const cs = Math.round(sec * 100), h = Math.floor(cs / 360000), m = Math.floor((cs % 360000) / 6000), s = Math.floor((cs % 6000) / 100);
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs % 100).padStart(2, "0")}`;
+};
+function watermarkLines(seconds, text) {
+  const total = Math.max(1, Math.ceil(seconds)), lines = [];
+  for (let t = 0, i = 0; t < total; t += WATERMARK_EVERY_SEC, i++) {
+    const [x, y] = WATERMARK_SPOTS[i % WATERMARK_SPOTS.length];
+    lines.push(`Dialogue: 1,${assClock(t)},${assClock(Math.min(total, t + WATERMARK_EVERY_SEC))},Mark,,0,0,0,,{\\an5\\pos(${x},${y})}${text}`);
+  }
+  return lines;
+}
+
+/** Whole .ass file for one caption shown for `seconds` seconds (PlayRes matches the 1080x1920 output). watermark: the mark's words, or falsy for none. */
+function buildAss(caption, seconds, watermark) {
   const t = Math.max(1, Math.ceil(seconds));
   const mm = String(Math.floor(t / 60)).padStart(2, "0");
   const ss = String(t % 60).padStart(2, "0");
@@ -44,10 +68,12 @@ function buildAss(caption, seconds) {
     "[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920", "WrapStyle: 2", "",
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Cap,Liberation Sans,64,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,6,0,8,60,60,170,1", "",
+    "Style: Cap,Liberation Sans,64,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,6,0,8,60,60,170,1",
+    "Style: Mark,Liberation Sans,50,&H33FFFFFF,&H33FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,4,0,5,0,0,0,1", "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
-    `Dialogue: 0,0:00:00.00,0:${mm}:${ss}.00,Cap,,0,0,0,,${assText(caption)}`, "",
+    `Dialogue: 0,0:00:00.00,0:${mm}:${ss}.00,Cap,,0,0,0,,${assText(caption)}`,
+    ...(watermark ? watermarkLines(seconds, assText(watermark).replace(/\\N/g, " ")) : []), "",
   ].join("\n");
 }
 
@@ -156,12 +182,12 @@ function audioStatus(plan) {
 function outputSize(durSec) { return durSec > LONG_CLIP_SEC ? { w: 720, h: 1280 } : { w: 1080, h: 1920 }; }
 const LONG_CLIP_SEC = 45;
 
-async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size }) {
+async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size, watermark }) {
   const start = Math.max(0, startSec - padSec);
   const dur = endSec + padSec - start;
   const { w, h } = size || outputSize(dur);
   const assFile = out.replace(/\.mp4$/, ".caption.ass");
-  await fs.promises.writeFile(assFile, buildAss(caption, dur));
+  await fs.promises.writeFile(assFile, buildAss(caption, dur, watermark));
   try {
     const vf =
       "[0:v]split=2[bg][fg];" +
@@ -187,4 +213,4 @@ async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.0
   return out;
 }
 
-module.exports = { outputSize, audioStatus, encodePreset, renderClip, wrapCaption, assText, buildAss, FONT_FILE, parseLoudnorm, audioNeeds, chooseGain, audioLooksOk, audioWindows, audioFilter, measureLoudness };
+module.exports = { outputSize, audioStatus, encodePreset, renderClip, wrapCaption, assText, buildAss, watermarkText, watermarkLines, FONT_FILE, parseLoudnorm, audioNeeds, chooseGain, audioLooksOk, audioWindows, audioFilter, measureLoudness };

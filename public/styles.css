@@ -63,3 +63,6 @@ details.card summary { cursor:pointer; }
 #pricing-card h3 { margin:18px 0 0; font-size:16px; }
 
 [hidden] { display:none !important; }   /* author styles like .card { display:flex } must not un-hide an element that has the hidden attribute */
+#app.locked > :not(#locked-card):not(#pricing-card) { display:none !important; }
+#cancel-panel { padding:12px; border:1px solid var(--line); border-radius:10px; }
+.row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }

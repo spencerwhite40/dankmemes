@@ -17,14 +17,17 @@
 //   tasteExamples    how many of the account's own 👍/👎 captions teach its caption style (each side)
 //   models           "standard" uses the cheaper models only; "premium" uses the best available
 //   clipsPerRun      most clips one run may make
+//   watermark        every clip rendered on this plan has a mark burned into the picture (it cannot be removed: no clean copy is kept)
+//   retentionPack    the free top-up pack offered to a monthly subscriber who is about to cancel and stays one more month (a key of PACKS)
 const PLANS = {
-  free:    { label: "Free",    monthlyMinutes: 5,    priceMonthly: 0,   priceAnnual: 0,     maxVideoMinutes: 5,   maxUploadMb: 200,  storageGb: 1,   retentionDays: 14,  concurrentRuns: 1, apiAccess: false, ratePerMin: 30,  tasteExamples: 5,  models: "standard", clipsPerRun: 12 },
-  creator: { label: "Creator", monthlyMinutes: 200,  priceMonthly: 30,  priceAnnual: 25.5,  maxVideoMinutes: 30,  maxUploadMb: 500,  storageGb: 20,  retentionDays: 90,  concurrentRuns: 2, apiAccess: true,  ratePerMin: 120, tasteExamples: 15, models: "premium",  clipsPerRun: 30 },
-  pro:     { label: "Pro",     monthlyMinutes: 600,  priceMonthly: 90,  priceAnnual: 76.5,  maxVideoMinutes: 60,  maxUploadMb: 1000, storageGb: 100, retentionDays: 180, concurrentRuns: 4, apiAccess: true,  ratePerMin: 300, tasteExamples: 30, models: "premium",  clipsPerRun: 60 },
-  agency:  { label: "Agency",  monthlyMinutes: 2000, priceMonthly: 300, priceAnnual: 255,   maxVideoMinutes: 120, maxUploadMb: 2000, storageGb: 500, retentionDays: 365, concurrentRuns: 8, apiAccess: true,  ratePerMin: 600, tasteExamples: 50, models: "premium",  clipsPerRun: 60 },
+  free:    { label: "Free",    monthlyMinutes: 5,    priceMonthly: 0,   priceAnnual: 0,     maxVideoMinutes: 5,  maxUploadMb: 200,  storageGb: 1,   retentionDays: 14,  concurrentRuns: 1, apiAccess: false, ratePerMin: 30,  tasteExamples: 5,  models: "standard", clipsPerRun: 12, watermark: true,  retentionPack: null },
+  starter: { label: "Starter", monthlyMinutes: 100,  priceMonthly: 15,  priceAnnual: 12.75, maxVideoMinutes: 15, maxUploadMb: 300,  storageGb: 5,   retentionDays: 30,  concurrentRuns: 1, apiAccess: false, ratePerMin: 60,  tasteExamples: 10, models: "premium",  clipsPerRun: 20, watermark: true,  retentionPack: "mini" },
+  creator: { label: "Creator", monthlyMinutes: 200,  priceMonthly: 30,  priceAnnual: 25.5,  maxVideoMinutes: 30,  maxUploadMb: 500,  storageGb: 20,  retentionDays: 90,  concurrentRuns: 2, apiAccess: true,  ratePerMin: 120, tasteExamples: 15, models: "premium",  clipsPerRun: 30, watermark: false, retentionPack: "small" },
+  pro:     { label: "Pro",     monthlyMinutes: 600,  priceMonthly: 90,  priceAnnual: 76.5,  maxVideoMinutes: 60,  maxUploadMb: 1000, storageGb: 100, retentionDays: 180, concurrentRuns: 4, apiAccess: true,  ratePerMin: 300, tasteExamples: 30, models: "premium",  clipsPerRun: 60, watermark: false, retentionPack: "medium" },
+  agency:  { label: "Agency",  monthlyMinutes: 2000, priceMonthly: 300, priceAnnual: 255,   maxVideoMinutes: 120, maxUploadMb: 2000, storageGb: 500, retentionDays: 365, concurrentRuns: 8, apiAccess: true,  ratePerMin: 600, tasteExamples: 50, models: "premium",  clipsPerRun: 60, watermark: false, retentionPack: "bulk" },
 };
 
-// Top-up packs: extra minutes bought once. They are used after the plan's monthly minutes and last PACK_MONTHS months.
+// Top-up packs: extra minutes bought once, by subscribers only. They are used after the plan's monthly minutes and never expire.
 // Listed smallest to largest. Each size up is a better price per minute, the smallest is the worst deal, and even the
 // best deal costs a little more per minute than a subscription (tests check all three), so subscribing stays the better buy.
 const PACKS = {
@@ -34,7 +37,6 @@ const PACKS = {
   large:  { label: "250 minutes", minutes: 250, price: 50 },
   bulk:   { label: "500 minutes", minutes: 500, price: 85 },
 };
-const PACK_MONTHS = 12;
 const PERIODS = ["monthly", "annual"];
 const paidPlanNames = () => Object.keys(PLANS).filter((n) => PLANS[n].priceMonthly > 0);
 
@@ -44,4 +46,4 @@ const planNames = () => Object.keys(PLANS);
 const getPlan = (name) => ({ name: PLANS[name] ? name : DEFAULT_PLAN, ...(PLANS[name] || PLANS[DEFAULT_PLAN]) });
 const GB = 1024 ** 3;
 
-module.exports = { PLANS, PACKS, PACK_MONTHS, PERIODS, DEFAULT_PLAN, planNames, paidPlanNames, getPlan, GB };
+module.exports = { PLANS, PACKS, PERIODS, DEFAULT_PLAN, planNames, paidPlanNames, getPlan, GB };
