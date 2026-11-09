@@ -56,3 +56,13 @@ Every AI call is written to `model_usage` against the account and run that cause
 Add prices (per million tokens) in `MODEL_PRICES_JSON` or a file named by `MODEL_PRICES_FILE` and each call also gets a dollar cost:
 `{"google:gemini-3.1-pro": {"input": 0, "output": 0, "cached_input": 0}}`. Without prices the cost is left empty rather than guessed.
 `GET /v1/usage` shows an account its minutes, storage and tokens per model.
+
+## Downloading and deleting an account's data
+
+Two endpoints exist for a signed-in account. There is no button for them on the page yet, so for now a customer asks by email
+(the Terms and Privacy Policy say so) and these are what you or the page would call.
+
+| Endpoint | What it does |
+|---|---|
+| `GET /account/export` | Downloads `my-data.json`: the account, audiences, runs, clips with their ratings, API key names (never the keys), usage and top-up packs. The video and clip files themselves aren't in it. Needs an unlocked account; limited to 5 a hour. |
+| `POST /account/delete` with `{"password": "...", "confirm": "DELETE"}` | Deletes the account and everything it owns: runs, stored videos and clips (files included), audiences, keys, usage records, packs, sessions. Needs the password. Refuses while a run is going. A live subscription is cancelled with Stripe first, and if that can't be done nothing is deleted. A locked account can use it too. Payment records stay with Stripe. |

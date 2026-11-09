@@ -13,6 +13,7 @@ const { startMemeBuilderWorker } = require("./worker");
 const { asyncRoute } = require("./async-route");
 const { buildV1 } = require("./v1");
 const { registerBillingWebhook, registerBillingRoutes } = require("./billing/routes");
+const { registerDataRoutes } = require("./data-routes");
 const legal = require("./legal");
 const mail = require("./email");
 
@@ -30,6 +31,7 @@ function buildApp(pool) {
   registerAuthRoutes(app, { pool, asyncRoute });
   registerAccountRoutes(app, { pool, asyncRoute, requireUser: needActive });
   registerBillingRoutes(app, { pool, asyncRoute, requireUser: needUser });
+  registerDataRoutes(app, { pool, asyncRoute, requireUser: needUser, requireActive: needActive });
   registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin: needActive });
   app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 
