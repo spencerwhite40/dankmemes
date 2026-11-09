@@ -26,7 +26,7 @@ plan minutes are gone, oldest-expiring first, and last 12 months.
 
 ## Setting it up (do it in Stripe's test mode first)
 
-1. **Products and prices.** In the Stripe dashboard create five products with these prices. The amounts come from `src/plans.js` and `docs/pricing.md`; change them there first if they change.
+1. **Products and prices.** In the Stripe dashboard create these products and prices (a plan has two prices, a pack has one). The amounts come from `src/plans.js` and `docs/pricing.md`; change them there first if they change.
 
    | Product | Price | Billing | Env var |
    |---|---|---|---|
@@ -36,8 +36,11 @@ plan minutes are gone, oldest-expiring first, and last 12 months.
    | Pro | $918 | recurring, yearly | `STRIPE_PRICE_PRO_ANNUAL` |
    | Agency | $300 | recurring, monthly | `STRIPE_PRICE_AGENCY_MONTHLY` |
    | Agency | $3,060 | recurring, yearly | `STRIPE_PRICE_AGENCY_ANNUAL` |
-   | 40 minutes | $10 | one-time | `STRIPE_PRICE_PACK_SMALL` |
-   | 100 minutes | $22 | one-time | `STRIPE_PRICE_PACK_LARGE` |
+   | 20 minutes | $6 | one-time | `STRIPE_PRICE_PACK_MINI` |
+   | 50 minutes | $13 | one-time | `STRIPE_PRICE_PACK_SMALL` |
+   | 100 minutes | $23 | one-time | `STRIPE_PRICE_PACK_MEDIUM` |
+   | 250 minutes | $50 | one-time | `STRIPE_PRICE_PACK_LARGE` |
+   | 500 minutes | $85 | one-time | `STRIPE_PRICE_PACK_BULK` |
 
    Each price has an id that starts with `price_`. Put it in the env var named in the table. A plan or pack whose id is missing shows "Not on sale yet".
 

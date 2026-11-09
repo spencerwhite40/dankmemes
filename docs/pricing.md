@@ -14,12 +14,17 @@ this page records the decisions behind them. Charging is built (Stripe Checkout 
 
 ## Top-up packs
 
-| Pack | Minutes | Price |
-|---|---|---|
-| Small | 40 | $10 |
-| Large | 100 | $22 |
+| Pack | Minutes | Price | Per minute |
+|---|---|---|---|
+| Mini | 20 | $6 | $0.30 (worst deal) |
+| Small | 50 | $13 | $0.26 |
+| Medium | 100 | $23 | $0.23 |
+| Large | 250 | $50 | $0.20 |
+| Bulk | 500 | $85 | $0.17 (best deal) |
 
-Pack minutes are used after the monthly minutes run out and last 12 months. A pack always costs more per minute than any plan.
+Pack minutes are used after the monthly minutes run out and last 12 months. Each size up is a better rate. Even the best pack
+costs a little more per minute than any subscription ($0.15 monthly), so subscribing stays the better buy for regular use. Tests enforce all three rules.
+A pack only adds minutes: everything else (video length, storage, API access, runs at once) still follows the account's plan.
 
 ## Rules
 

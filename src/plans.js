@@ -25,10 +25,14 @@ const PLANS = {
 };
 
 // Top-up packs: extra minutes bought once. They are used after the plan's monthly minutes and last PACK_MONTHS months.
-// A pack always costs more per minute than any plan (a test checks it), so heavy users have a reason to upgrade.
+// Listed smallest to largest. Each size up is a better price per minute, the smallest is the worst deal, and even the
+// best deal costs a little more per minute than a subscription (tests check all three), so subscribing stays the better buy.
 const PACKS = {
-  small: { label: "40 minutes",  minutes: 40,  price: 10 },
-  large: { label: "100 minutes", minutes: 100, price: 22 },
+  mini:   { label: "20 minutes",  minutes: 20,  price: 6 },
+  small:  { label: "50 minutes",  minutes: 50,  price: 13 },
+  medium: { label: "100 minutes", minutes: 100, price: 23 },
+  large:  { label: "250 minutes", minutes: 250, price: 50 },
+  bulk:   { label: "500 minutes", minutes: 500, price: 85 },
 };
 const PACK_MONTHS = 12;
 const PERIODS = ["monthly", "annual"];

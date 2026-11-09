@@ -106,7 +106,9 @@ function renderPricing() {
   $("packs").replaceChildren(...billing.packs.map((p) => {
     const btn = el("button", { type: "button", textContent: p.available ? `Buy · ${money(p.price)}` : "Not on sale yet", disabled: !p.available });
     btn.addEventListener("click", () => pay({ pack: p.key }, btn));
-    return el("div", { className: "plan" }, el("strong", { textContent: p.label }), el("span", { className: "price", textContent: money(p.price) }), btn);
+    const best = p.key === billing.packs[billing.packs.length - 1].key;
+    return el("div", { className: "plan" + (best ? " mine" : "") }, el("strong", { textContent: p.label }), el("span", { className: "price", textContent: money(p.price) }),
+      el("span", { className: "muted", textContent: `$${(p.price / p.minutes).toFixed(2)} a minute${best ? " · best value" : ""}` }), btn);
   }));
   const bits = [];
   if (cur.status === "canceling" && cur.renews_at) bits.push(`Your plan ends on ${new Date(cur.renews_at).toLocaleDateString()}.`);

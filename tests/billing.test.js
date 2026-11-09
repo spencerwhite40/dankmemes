@@ -51,10 +51,22 @@ describe("billing building blocks (no database)", () => {
       assert.ok(c.plans.every((p) => p.available.monthly && p.available.annual) && c.packs.every((p) => p.available));
     } finally { for (const k of Object.keys(process.env)) if (!(k in keep)) delete process.env[k]; Object.assign(process.env, keep); }
   });
-  test("a pack always costs more per minute than any plan, annual included", () => {
+  test("pack prices: bigger packs are better value, the smallest is the worst deal, and even the best costs a little more than a subscription", () => {
+    const list = Object.entries(PACKS), rate = (p) => p.price / p.minutes;
+    assert.ok(list.length >= 3, "several sizes");
+    for (let i = 1; i < list.length; i++) {
+      assert.ok(list[i][1].minutes > list[i - 1][1].minutes, `${list[i][0]} is bigger than ${list[i - 1][0]}`);
+      assert.ok(rate(list[i][1]) < rate(list[i - 1][1]), `${list[i][0]} is a better rate than ${list[i - 1][0]}`);
+    }
+    const rates = list.map(([, p]) => rate(p));
+    assert.equal(Math.max(...rates), rate(list[0][1]), "the smallest is the worst deal"); assert.equal(Math.min(...rates), rate(list[list.length - 1][1]), "the largest is the best");
+    const monthlyRates = paidPlanNames().map((n) => PLANS[n].priceMonthly / PLANS[n].monthlyMinutes);
+    const subscription = Math.max(...monthlyRates), best = Math.min(...rates);
+    assert.ok(best > subscription, `the best pack (${best.toFixed(3)}) costs more per minute than the dearest monthly plan (${subscription.toFixed(3)})`);
+    assert.ok(best <= subscription * 1.25, "but only slightly more");
     const cheapestPlanRate = Math.min(...paidPlanNames().flatMap((n) => [PLANS[n].priceMonthly, PLANS[n].priceAnnual].map((p) => p / PLANS[n].monthlyMinutes)));
-    for (const [k, p] of Object.entries(PACKS)) assert.ok(p.price / p.minutes > PLANS.creator.priceMonthly / PLANS.creator.monthlyMinutes, `${k} is dearer per minute than Creator monthly`);
-    assert.ok(Object.values(PACKS).every((p) => p.price / p.minutes > cheapestPlanRate));
+    assert.ok(best > cheapestPlanRate, "and more than any annual rate");
+    assert.ok(list.every(([, p]) => Number.isInteger(p.minutes) && p.price > 0 && /\d/.test(p.label)));
   });
 });
 
