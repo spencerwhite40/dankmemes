@@ -49,10 +49,13 @@ async function createRun(pool, owner, input) {
   const base = { personaId, options, ownerId: owner.ownerId, apiKeyId: owner.apiKeyId || null };
 
   if (input.file) {
+    // Is it a video at all? Judged from the file's own first bytes, not its name, before any work is spent on it.
+    if (!(await media.sniffFile(input.file.path).catch(() => null))) throw new HttpError(400, "That doesn't look like a video file. Upload an mp4, mov, webm or mkv.", "bad_video");
     // What the account's plan allows: minutes left, runs at once, upload size, storage.
     const plan = fitToPlan(await accounts.assertCanStart(pool, owner.ownerId, { fileBytes: Number(input.file.size) || 0 }));
     let info;
     try { info = await media.probe(input.file.path); } catch { throw new HttpError(400, "That file doesn't look like a video we can read (try mp4 or mov).", "bad_video"); }
+    try { media.assertWorkable(info); } catch (e) { throw new HttpError(400, e.message, "bad_video"); }
     if (info.duration > plan.maxVideoMinutes * 60) throw new HttpError(413, `That video is ${Math.round(info.duration / 60)} minutes. The ${plan.label} plan allows up to ${plan.maxVideoMinutes}.`, "video_too_long");
     const id = crypto.randomUUID();
     const ext = (path.extname(input.file.originalname || "") || ".mp4").toLowerCase().replace(/[^.a-z0-9]/g, "").slice(0, 8) || ".mp4";

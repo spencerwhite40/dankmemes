@@ -145,4 +145,35 @@ async function downloadUrl(raw, dest, { maxBytes = 1024 * 1024 * 1024 } = {}) {
   return dest;
 }
 
-module.exports = { ffmpegBin, run, runFfmpeg, parseProbe, probe, makeAnalysisProxy, makeAnalysisSegment, detectSilences, makeExcerpt, downloadUrl, assertPublicUrl, isPrivateIp };
+// ── Is this really a video, and one we can work on? ──────────────────────────────────────────────────────
+/** The kind of video container a file starts with, judged from its first bytes, or null if it isn't one we know. Pure. */
+function sniffVideo(buf) {
+  if (!buf || buf.length < 12) return null;
+  const at = (o, n) => buf.subarray(o, o + n).toString("latin1");
+  if (at(4, 4) === "ftyp") return "mp4";                                         // mp4, m4v, mov, 3gp
+  if (["moov", "mdat", "wide", "free", "skip"].includes(at(4, 4))) return "mov";  // older QuickTime files
+  if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) return "matroska";   // mkv, webm
+  if (at(0, 4) === "RIFF" && at(8, 4) === "AVI ") return "avi";
+  if (at(0, 3) === "FLV") return "flv";
+  if (buf[0] === 0x30 && buf[1] === 0x26 && buf[2] === 0xb2 && buf[3] === 0x75) return "asf";           // wmv
+  if (buf[0] === 0 && buf[1] === 0 && buf[2] === 1 && (buf[3] === 0xba || buf[3] === 0xb3)) return "mpeg";
+  if (at(0, 4) === "OggS") return "ogg";
+  if (buf[0] === 0x47 && buf.length > 376 && buf[188] === 0x47 && buf[376] === 0x47) return "mpegts";
+  return null;
+}
+async function sniffFile(file) {
+  const fh = await fs.promises.open(file, "r");
+  try { const buf = Buffer.alloc(1024); const { bytesRead } = await fh.read(buf, 0, 1024, 0); return sniffVideo(buf.subarray(0, bytesRead)); } finally { await fh.close(); }
+}
+
+const MAX_PIXELS = () => Number(process.env.MEME_BUILDER_MAX_PIXELS) || 3840 * 2160 * 1.03;   // about 4K; larger is too slow to work on
+const MIN_SECONDS = 2;
+/** Throws a plain-words Error if what probe() found can't be worked on. Pure. */
+function assertWorkable(info) {
+  if (!info || !info.hasVideo) throw new Error("That file has no picture in it.");
+  if (!(info.duration >= MIN_SECONDS)) throw new Error(`That video is shorter than ${MIN_SECONDS} seconds.`);
+  if (info.width && info.height && info.width * info.height > MAX_PIXELS()) throw new Error(`That video is ${info.width}x${info.height}, which is larger than we can work on. The limit is about 4K (3840x2160). Export it at a smaller size and try again.`);
+  return info;
+}
+
+module.exports = { sniffVideo, sniffFile, assertWorkable, ffmpegBin, run, runFfmpeg, parseProbe, probe, makeAnalysisProxy, makeAnalysisSegment, detectSilences, makeExcerpt, downloadUrl, assertPublicUrl, isPrivateIp };

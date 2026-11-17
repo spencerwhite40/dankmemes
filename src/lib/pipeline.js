@@ -47,6 +47,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       }
     } else if (job.source_url) {
       await media.downloadUrl(job.source_url, sourceFile);
+      if (!(await media.sniffFile(sourceFile).catch(() => null))) throw new Error("That link didn't give us a video file (it may be a web page). Use a direct link to the video file, or upload it.");
       const bytes = (await fs.promises.stat(sourceFile)).size;
       const uri = await storage.putFile(sourceFile, `${job.id}/source.mp4`, "video/mp4");
       await store.patchJob(pool, job.id, { source_uri: uri, source_bytes: bytes });
@@ -57,6 +58,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
     // prepare
     await stage("prepare");
     const meta = job.video_meta || await media.probe(sourceFile);
+    media.assertWorkable(meta);
     if (!job.video_meta) await store.patchJob(pool, job.id, { video_meta: meta });
     if (plan && meta.duration > plan.maxVideoMinutes * 60) {
       throw new Error(`This video is ${Math.round(meta.duration / 60)} minutes long. The ${plan.label} plan allows up to ${plan.maxVideoMinutes}.`);
