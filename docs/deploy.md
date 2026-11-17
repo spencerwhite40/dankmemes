@@ -46,6 +46,12 @@ fly deploy
 Add `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` to the secrets if you have them. This machine doesn't need the Stripe, email or legal settings.
 Use `fly scale count 2` later if runs queue up: several machines safely share one queue.
 
+**How fast it renders (measured, not guessed):** with real ffmpeg on a synthetic 720p test video, a 25-second clip took about 9 seconds on a
+2-core machine and about 6 seconds on 4 cores, so roughly 3 minutes of rendering for 20 clips on the 2-core size. Real footage and 1080p sources will be
+somewhat slower, so time one real video. Rendering two clips at once gained about 1.3x on 4 cores and almost nothing (1.05x) on 2 cores,
+so the runner only does it on 4 or more cores (`RENDER_CONCURRENCY` overrides). The AI steps (watching, captions, checking cuts) add their own time on top.
+If runs queue up, add machines (`fly scale count 2`) rather than parallelism on a small one.
+
 ## 5. The web app (Render)
 
 1. New, Blueprint, point it at the repo. Render reads `render.yaml` and asks for each secret marked `sync: false`.

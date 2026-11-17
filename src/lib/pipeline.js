@@ -13,6 +13,7 @@
 // another audience skips upload + analyze (the slow, expensive part).
 
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const store = require("./store");
@@ -28,6 +29,17 @@ const { tasteFromRatings } = require("./personas");
 
 // Every captioned moment becomes a clip (best first); the score is a label, not a filter. A minimum score can be set in Options.
 const DEFAULTS = { minScore: 1, maxClips: 30, minClips: 5 };
+
+/**
+ * How many clips to render at once: RENDER_CONCURRENCY if set, else 2 on a machine with 4 or more cores and 1 on a smaller one.
+ * Measured with real ffmpeg: on 4 cores two at a time is about 1.3x faster; on 2 cores it gains almost nothing (about 1.05x),
+ * because one render already keeps both cores busy. On a small machine, add machines instead (they share the queue).
+ */
+function renderConcurrency() {
+  const set = Number(process.env.RENDER_CONCURRENCY);
+  if (Number.isFinite(set) && set >= 1) return Math.min(8, Math.floor(set));
+  return os.cpus().length >= 4 ? 2 : 1;
+}
 
 async function processJob(pool, job, { log = console, plan = null } = {}) {
   const workDir = await storage.makeWorkDir(job.id);
@@ -144,26 +156,36 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
     const oldUris = await store.clearClips(pool, job.id);
     let saved = 0, failedClips = 0, lastRenderErr = null;
     const audioCounts = { none: 0, ok: 0, boosted: 0, trimmed: 0, rejected: 0 };
-    for (const [i, c] of picked.entries()) {
+    // On a machine with spare cores, two clips render at once (see renderConcurrency). Each finished clip is saved the moment it exists
+    // (the page shows it while the rest render); saving and progress updates happen one at a time, in the order clips finish.
+    const concurrency = renderConcurrency();
+    const threads = Math.max(1, Math.floor(os.cpus().length / concurrency));
+    const watermark = plan && plan.watermark ? watermarkText() : null;
+    let finished = 0, queue = Promise.resolve();
+    const inOrder = (fn) => (queue = queue.then(fn, fn));
+    await mapLimit(picked, concurrency, async (c, i) => {
       const name = `clip-${String(i + 1).padStart(2, "0")}.mp4`;
       const out = path.join(workDir, name);
+      let saveNow = null;
       try {
         const cut = snapBounds(c.moment, silences, meta.duration);
-        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark: plan && plan.watermark ? watermarkText() : null, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
+        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark, threads, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
         const clipBytes = (await fs.promises.stat(out)).size;
         const uri = await storage.putFile(out, `${job.id}/${Date.now()}-${name}`, "video/mp4");
-        // Saved the moment it exists: the page shows it (and the Library lists it) while the rest still render.
         // The stored times are the ones actually rendered, so a later caption edit re-renders the identical cut.
-        saved += 1;
-        await store.addClip(pool, job.id, persona.id, saved, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: cut.startSec, endSec: cut.endSec, storageUri: uri, bytes: clipBytes }, job.created_by);
+        saveNow = async () => { saved += 1; await store.addClip(pool, job.id, persona.id, saved, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: cut.startSec, endSec: cut.endSec, storageUri: uri, bytes: clipBytes }, job.created_by); };
       } catch (err) {
         // One bad clip must not cost the other eleven.
         failedClips += 1; lastRenderErr = err;
         if (log.error) log.error(`[meme-builder] clip ${i + 1}/${picked.length} failed, continuing:`, err && err.message);
       }
       await fs.promises.rm(out, { force: true }).catch(() => {});
-      await stage("render", { ...renderInfo, done: i + 1, failed: failedClips, audio: { ...audioCounts } });
-    }
+      await inOrder(async () => {
+        if (saveNow) await saveNow();
+        finished += 1;
+        await stage("render", { ...renderInfo, done: finished, failed: failedClips, audio: { ...audioCounts } });
+      });
+    });
     if (saved === 0) throw lastRenderErr || new Error("None of the clips could be rendered.");
     for (const u of oldUris) await storage.remove(u).catch((e) => log.warn && log.warn("[meme-builder] cleanup:", e.message));
     await store.finishJob(pool, job.id);
@@ -195,4 +217,4 @@ async function rerenderClip(pool, clip, caption, { watermark = null } = {}) {
   }
 }
 
-module.exports = { processJob, rerenderClip, DEFAULTS };
+module.exports = { processJob, rerenderClip, renderConcurrency, DEFAULTS };

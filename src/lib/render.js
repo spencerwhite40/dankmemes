@@ -182,7 +182,7 @@ function audioStatus(plan) {
 function outputSize(durSec) { return durSec > LONG_CLIP_SEC ? { w: 720, h: 1280 } : { w: 1080, h: 1920 }; }
 const LONG_CLIP_SEC = 45;
 
-async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size, watermark }) {
+async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size, watermark, threads }) {
   const start = Math.max(0, startSec - padSec);
   const dur = endSec + padSec - start;
   const { w, h } = size || outputSize(dur);
@@ -204,6 +204,7 @@ async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.0
       "-filter_complex", vf, "-map", "[v]", "-map", "0:a?",
       ...(audio.filter ? ["-af", audio.filter] : []),
       "-c:v", "libx264", "-preset", encodePreset(dur), "-crf", "23", "-pix_fmt", "yuv420p",
+      ...(threads ? ["-threads", String(threads)] : []),
       "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
       out,
     ]);
