@@ -36,7 +36,7 @@ retried request never starts a second run (and never costs twice).
 where it is. Clips appear as they finish rendering, so you can show them while the run is still going. Poll every few seconds, or use the webhook.
 
 Each clip has `caption`, `score`, `start_sec`, `end_sec`, and `video_url`: a signed link valid for an hour (`video_url_expires_at`) that
-plays in a `<video>` tag with no key. Fetch the run again for a fresh link. Append `&download=1` to force a download.
+plays in a `<video>` tag with no key. Fetch the run again for a fresh link. Append `&download=1` to force a download. Links are always absolute: built from `APP_URL` (or `PUBLIC_BASE_URL`) if set, otherwise from the address the request came to.
 
 ## Webhook
 

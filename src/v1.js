@@ -63,12 +63,14 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     next();
   }));
 
-  const clipOut = (c) => {
+  // Links in answers must work from anywhere, so they are absolute: PUBLIC_BASE_URL or APP_URL if set, else the address this request came to.
+  const linkBase = (req) => (baseUrl || process.env.APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+  const clipOut = (c, base) => {
     const { exp, sig } = signClip(c.id, { ttlSec: LINK_TTL_SEC });
     return {
       id: c.id, run_id: c.job_id, n: c.n, caption: c.caption, score: c.score == null ? null : Number(c.score), emotion: c.emotion || null,
       start_sec: Number(c.start_sec), end_sec: Number(c.end_sec), rating: c.rating, created_at: c.created_at,
-      video_url: `${baseUrl}/v1/clips/${c.id}/video?exp=${exp}&sig=${sig}`, video_url_expires_at: new Date(exp * 1000).toISOString(),
+      video_url: `${base}/v1/clips/${c.id}/video?exp=${exp}&sig=${sig}`, video_url_expires_at: new Date(exp * 1000).toISOString(),
     };
   };
   const runOut = (j, extra = {}) => ({
@@ -143,7 +145,7 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
 
   router.get("/runs/:id", safe(async (req, res) => {
     const job = await ownedRun(req);
-    const clips = (await store.listJobClips(pool, job.id)).map(clipOut);
+    const clips = (await store.listJobClips(pool, job.id)).map((c) => clipOut(c, linkBase(req)));
     res.json({ run: runOut(job, { clip_count: clips.length }), clips });
   }));
 
@@ -166,20 +168,20 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
   }));
 
   // ── Clips ────────────────────────────────────────────────────────────────────────────────────────
-  router.get("/clips/:id", safe(async (req, res) => { res.json({ clip: clipOut(await ownedClip(req)) }); }));
+  router.get("/clips/:id", safe(async (req, res) => { res.json({ clip: clipOut(await ownedClip(req), linkBase(req)) }); }));
 
   router.post("/clips/:id/rating", safe(async (req, res) => {
     const clip = await ownedClip(req);
     const r = Number((req.body || {}).rating);
     if (![-1, 0, 1].includes(r)) throw new HttpError(400, "rating must be -1, 0 or 1", "bad_rating");
     await store.setRating(pool, clip.id, r);
-    res.json({ clip: clipOut({ ...clip, rating: r }) });
+    res.json({ clip: clipOut({ ...clip, rating: r }, linkBase(req)) });
   }));
 
   router.post("/clips/:id/regenerate-caption", safe(async (req, res) => {
     const clip = await ownedClip(req);
     const updated = await regenerate(pool, clip);
-    res.json({ clip: clipOut(updated) });
+    res.json({ clip: clipOut(updated, linkBase(req)) });
   }));
 
   router.delete("/clips/:id", safe(async (req, res) => {
