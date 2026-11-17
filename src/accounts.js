@@ -31,6 +31,7 @@ let dummyHash;   // so a login for an email that doesn't exist takes as long as 
 const dummy = async () => (dummyHash = dummyHash || (await hashPassword("not-a-real-password")));
 
 const normEmail = (e) => String(e || "").trim().toLowerCase();
+const validEmail = (e) => EMAIL_RE.test(e);
 const adminEmails = () => String(process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 
 const userOut = (u) => ({ id: u.id, email: u.email, name: u.name || null, plan: u.plan, is_admin: !!u.is_admin, locked: !!u.locked_at, email_verified: !!u.email_verified_at, created_at: u.created_at });
@@ -167,5 +168,5 @@ async function assertCanStart(pool, ownerId, { fileBytes = 0 } = {}) {
 
 module.exports = {
   hashPassword, verifyPassword, signup, authenticate, createSession, userForSession, endSession, endAllSessions, setPassword, setPlan,
-  markVerified, assertVerified, verificationRequired, planFor, isLocked, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
+  validEmail, markVerified, assertVerified, verificationRequired, planFor, isLocked, storageBytes, activeRuns, usageSnapshot, assertCanStart, userOut, normEmail, SESSION_DAYS,
 };

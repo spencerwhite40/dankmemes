@@ -66,3 +66,14 @@ Two endpoints exist for a signed-in account. There is no button for them on the 
 |---|---|
 | `GET /account/export` | Downloads `my-data.json`: the account, audiences, runs, clips with their ratings, API key names (never the keys), usage and top-up packs. The video and clip files themselves aren't in it. Needs an unlocked account; limited to 5 a hour. |
 | `POST /account/delete` with `{"password": "...", "confirm": "DELETE"}` | Deletes the account and everything it owns: runs, stored videos and clips (files included), audiences, keys, usage records, packs, sessions. Needs the password. Refuses while a run is going. A live subscription is cancelled with Stripe first, and if that can't be done nothing is deleted. A locked account can use it too. Payment records stay with Stripe. |
+
+## Changing your own password and email
+
+For a signed-in account that knows its password. There are no buttons for these yet (the front end is waiting), so these are what a page would call.
+
+| Endpoint | What it does |
+|---|---|
+| `POST /account/password` with `{"current_password", "new_password"}` | Changes the password. Every other device is signed out, this one stays signed in, and a notice goes to the account's email. Limited to 10 attempts an hour. |
+| `POST /account/email` with `{"password", "new_email"}` | Asks for a change. Nothing changes yet: a confirmation link goes to the **new** address, and a warning (with the new address partly hidden) goes to the **old** one. The email changes when the link is opened, which uses the same `/?verify=...` link as account confirmation. Needs email to be set up. A newer request cancels an older link, and the link works for 24 hours. The payment provider's copy of the address is updated too. |
+
+A locked account can use both.

@@ -3,6 +3,7 @@
 const accounts = require("./accounts");
 const mail = require("./email");
 const tokens = require("./tokens");
+const stripe = require("./billing/stripe");
 const { createLimiter } = require("./ratelimit");
 const { HttpError } = require("./errors");
 
@@ -69,13 +70,61 @@ function registerAuthRoutes(app, { pool, asyncRoute }) {
     res.status(201).json({ user: accounts.userOut(user) });
   }));
 
+  // One link type for both: confirming a new account's address, and confirming the new address of an email change.
   app.post("/auth/verify", handle(async (req, res) => {
     const gate = verifyByIp.check(`ip:${req.ip}`, 60);
     if (!gate.ok) throw new HttpError(429, "Too many attempts. Try again later.", "rate_limited");
-    const userId = await tokens.consume(pool, (req.body || {}).token, "verify");
-    if (!userId) throw new HttpError(400, "This link is invalid or has expired. Sign in and ask for a new one.", "bad_token");
-    await accounts.markVerified(pool, userId);
+    const token = (req.body || {}).token;
+    const userId = await tokens.consume(pool, token, "verify");
+    if (userId) { await accounts.markVerified(pool, userId); return res.json({ ok: true }); }
+    const change = await tokens.consumeRow(pool, token, "email_change");
+    if (!change) throw new HttpError(400, "This link is invalid or has expired. Sign in and ask for a new one.", "bad_token");
+    try {
+      await pool.query("update users set email = $2, email_verified_at = now() where id = $1", [change.userId, change.payload]);
+    } catch (e) {
+      if (e && e.code === "23505") throw new HttpError(409, "Someone else has taken that address in the meantime. Ask for a change to a different one.", "email_taken");
+      throw e;
+    }
+    // Keep the payment provider's copy of the address in step, so receipts go to the right place (best effort).
+    const { rows } = await pool.query("select stripe_customer_id from users where id = $1", [change.userId]);
+    if (rows[0] && rows[0].stripe_customer_id && stripe.enabled()) await stripe.call("POST", `/customers/${encodeURIComponent(rows[0].stripe_customer_id)}`, { email: change.payload }).catch(logFail("stripe customer"));
+    res.json({ ok: true, email_changed: true });
+  }));
+
+  // ── changing your own password or email address (you must be signed in and know your password) ──────
+  const securityByUser = hourly();
+  const checkPassword = async (userId, password) => {
+    const { rows } = await pool.query("select password_hash from users where id = $1", [userId]);
+    if (!rows[0] || !(await accounts.verifyPassword(String(password || ""), rows[0].password_hash))) throw new HttpError(403, "That password isn't right.", "bad_password");
+  };
+
+  app.post("/account/password", requireUser(pool), handle(async (req, res) => {
+    if (!securityByUser.check(req.user.id, 10).ok) throw new HttpError(429, "Too many attempts. Try again in an hour.", "rate_limited");
+    const b = req.body || {};
+    await checkPassword(req.user.id, b.current_password);
+    if (typeof b.new_password !== "string" || b.new_password.length < 10) throw new HttpError(400, "Choose a new password of at least 10 characters.", "weak_password");
+    if (b.new_password.length > 200) throw new HttpError(400, "That password is too long.", "bad_password");
+    if (b.new_password === b.current_password) throw new HttpError(400, "That's the same as your current password.", "same_password");
+    await accounts.setPassword(pool, req.user.id, b.new_password);                // signs every device out...
+    setCookie(res, await accounts.createSession(pool, req.user.id, req.headers["user-agent"]));   // ...except this one
+    if (mail.configured()) mail.send({ to: req.user.email, ...mail.passwordChangedNotice({ name: req.user.name }) }).catch(logFail("password notice"));
     res.json({ ok: true });
+  }));
+
+  app.post("/account/email", requireUser(pool), handle(async (req, res) => {
+    if (!securityByUser.check(req.user.id, 10).ok) throw new HttpError(429, "Too many attempts. Try again in an hour.", "rate_limited");
+    const b = req.body || {};
+    await checkPassword(req.user.id, b.password);
+    const next = accounts.normEmail(b.new_email);
+    if (!accounts.validEmail(next)) throw new HttpError(400, "Enter a valid email address.", "bad_email");
+    if (next === accounts.normEmail(req.user.email)) throw new HttpError(400, "That's already your email address.", "same_email");
+    if (!mail.configured()) throw new HttpError(503, "Changing your email needs email to be set up on this server. Contact support.", "email_off");
+    if ((await pool.query("select 1 from users where lower(email) = $1", [next])).rowCount) throw new HttpError(409, "There's already an account with that email.", "email_taken");
+    const token = await tokens.create(pool, req.user.id, "email_change", { payload: next });
+    await mail.send({ to: next, ...mail.emailChangeMessage({ name: req.user.name, newEmail: next, link: `${baseUrl(req)}/?verify=${token}` }) })
+      .catch((e) => { logFail("email change")(e); throw new HttpError(502, "We couldn't send the email just now. Try again in a minute.", "email_failed"); });
+    mail.send({ to: req.user.email, ...mail.emailChangeNotice({ name: req.user.name, newEmail: next }) }).catch(logFail("email change notice"));
+    res.json({ ok: true, pending: true, message: `We sent a confirmation link to ${next}. Your email changes when you open it.` });
   }));
 
   app.post("/auth/resend-verification", requireUser(pool), handle(async (req, res) => {

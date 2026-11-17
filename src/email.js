@@ -63,4 +63,32 @@ function resetMessage({ name, link }) {
   };
 }
 
-module.exports = { send, configured, provider, outbox, verificationMessage, resetMessage, appName, esc };
+const mask = (addr) => String(addr).replace(/^(.).*(@.*)$/, "$1***$2");
+
+function emailChangeMessage({ name, link, newEmail }) {
+  const hi = name ? `Hi ${name},` : "Hi,";
+  return {
+    subject: `Confirm your new email address for ${appName()}`,
+    text: `${hi}\n\nTo use ${newEmail} as the email address for your ${appName()} account, confirm it here:\n${link}\n\nThe link works for 24 hours. If you didn't ask for this, ignore this email: nothing changes.\n\n${appName()}`,
+    html: wrap(`<p>${esc(hi)}</p><p>To use <strong>${esc(newEmail)}</strong> as the email address for your account, confirm it.</p>${button(link, "Confirm new email")}<p>The link works for 24 hours. If you didn't ask for this, ignore this email: nothing changes.</p>`),
+  };
+}
+/** Sent to the OLD address when a change is asked for, so a hijacked session can't quietly move an account. */
+function emailChangeNotice({ name, newEmail }) {
+  const hi = name ? `Hi ${name},` : "Hi,";
+  return {
+    subject: `A change of email address was requested on your ${appName()} account`,
+    text: `${hi}\n\nSomeone asked to change this account's email address to ${mask(newEmail)}. Nothing changes until that address is confirmed.\n\nIf this was you, there is nothing to do. If it wasn't, choose "Forgot your password?" on the sign-in page to reset your password, which signs everyone else out.\n\n${appName()}`,
+    html: wrap(`<p>${esc(hi)}</p><p>Someone asked to change this account's email address to <strong>${esc(mask(newEmail))}</strong>. Nothing changes until that address is confirmed.</p><p>If this was you, there is nothing to do. If it wasn't, choose "Forgot your password?" on the sign-in page to reset your password, which signs everyone else out.</p>`),
+  };
+}
+function passwordChangedNotice({ name }) {
+  const hi = name ? `Hi ${name},` : "Hi,";
+  return {
+    subject: `Your ${appName()} password was changed`,
+    text: `${hi}\n\nThe password for your ${appName()} account was just changed, and other devices were signed out.\n\nIf this was you, there is nothing to do. If it wasn't, choose "Forgot your password?" on the sign-in page right away.\n\n${appName()}`,
+    html: wrap(`<p>${esc(hi)}</p><p>The password for your account was just changed, and other devices were signed out.</p><p>If this was you, there is nothing to do. If it wasn't, choose "Forgot your password?" on the sign-in page right away.</p>`),
+  };
+}
+
+module.exports = { send, configured, provider, outbox, verificationMessage, resetMessage, emailChangeMessage, emailChangeNotice, passwordChangedNotice, mask, appName, esc };

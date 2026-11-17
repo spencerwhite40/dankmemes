@@ -188,3 +188,6 @@ create table if not exists auth_tokens (
   created_at timestamptz not null default now()
 );
 create index if not exists auth_tokens_user_idx on auth_tokens (user_id, purpose);
+
+-- a token can carry a value: for an email change, the new address it will confirm
+alter table auth_tokens add column if not exists payload text;
