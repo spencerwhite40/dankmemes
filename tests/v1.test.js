@@ -156,7 +156,9 @@ describe("the API against a real database", { skip: !DB && "DATABASE_URL_TEST is
     const src = path.join(tmp, "p.mp4"); fs.writeFileSync(src, Buffer.from("0123456789".repeat(100)));
     const uri = await storage.putFile(src, `${run.id}/p.mp4`, "video/mp4");
     await store.addClip(pool, run.id, "truckers", 1, { caption: "playable", score: 8, startSec: 1, endSec: 9, storageUri: uri });
-    const link = (await call("GET", `/v1/runs/${run.id}`, { key: A.key })).json.clips[0].video_url;
+    const absolute = (await call("GET", `/v1/runs/${run.id}`, { key: A.key })).json.clips[0].video_url;
+    assert.match(absolute, /^http:\/\/127\.0\.0\.1:\d+\/v1\/clips\//, "links in answers are absolute");
+    const u = new URL(absolute), link = u.pathname + u.search;   // the rest of this test calls our own server by path
     const full = await call("GET", link);
     assert.equal(full.status, 200); assert.equal(full.text.length, 1000);
     const part = await fetch(base + link, { headers: { Range: "bytes=10-19" } });
