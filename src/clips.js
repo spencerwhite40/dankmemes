@@ -8,6 +8,7 @@ const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { rerenderClip } = require("./lib/pipeline");
 const { watermarkText } = require("./lib/render");
 const accounts = require("./accounts");
+const { writeZip, safeName } = require("./zip");
 const { HttpError } = require("./errors");
 
 /** The analysis moment a clip came from (nearest midpoint within 20s), or a minimal stand-in built from the clip itself. Pure. */
@@ -78,6 +79,19 @@ async function streamClipVideo(req, res, clip, { download = false } = {}) {
   f.stream.pipe(res);
 }
 
+/** All of a run's clips as one zip download, streamed (nothing is held in memory). */
+async function streamClipsZip(res, job, clips) {
+  if (!clips.length) throw new HttpError(404, "There are no clips in this run yet.", "no_clips");
+  const used = new Set();
+  const entries = clips.map((c) => ({
+    name: safeName(`${String(c.n).padStart(2, "0")} ${c.caption || "clip"}`, used, ".mp4"),
+    open: async () => (await storage.openRead(c.storage_uri)).stream,
+  }));
+  const label = String(job.source_label || "clips").replace(/\.[a-z0-9]{2,4}$/i, "").replace(/[^\w -]+/g, "").trim().slice(0, 50).replace(/\s+/g, "-") || "clips";
+  res.writeHead(200, { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${label}-clips.zip"`, "Cache-Control": "private, no-store" });
+  await writeZip(res, entries);
+}
+
 /** Delete a finished run: its clips, its video (unless another run uses it), and the rows. A run in progress can't be deleted. */
 async function deleteRun(pool, ownerId, jobId) {
   const job = await store.getJob(pool, jobId);
@@ -90,4 +104,4 @@ async function deleteRun(pool, ownerId, jobId) {
   }
 }
 
-module.exports = { findMoment, applyCaption, regenerate, streamClipVideo, deleteRun };
+module.exports = { findMoment, applyCaption, regenerate, streamClipVideo, streamClipsZip, deleteRun };

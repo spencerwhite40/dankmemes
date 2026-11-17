@@ -10,7 +10,7 @@ const keys = require("./lib/keys");
 const { expandPersona, customPersonaId, isPresetId } = require("./lib/personas");
 const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { createRun, rerun } = require("./intake");
-const { regenerate, streamClipVideo, deleteRun } = require("./clips");
+const { regenerate, streamClipVideo, streamClipsZip, deleteRun } = require("./clips");
 const { signClip, verifyClip } = require("./signing");
 const { createLimiter } = require("./ratelimit");
 const { uploadMiddleware } = require("./upload");
@@ -145,6 +145,11 @@ function buildV1(pool, { baseUrl = process.env.PUBLIC_BASE_URL || "" } = {}) {
     const job = await ownedRun(req);
     const clips = (await store.listJobClips(pool, job.id)).map(clipOut);
     res.json({ run: runOut(job, { clip_count: clips.length }), clips });
+  }));
+
+  router.get("/runs/:id/clips.zip", safe(async (req, res) => {
+    const job = await ownedRun(req);
+    await streamClipsZip(res, job, await store.listJobClips(pool, job.id));
   }));
 
   router.post("/runs/:id/rerun", safe(async (req, res) => {

@@ -65,6 +65,7 @@ Delivery is retried a few times, but not stored: always be able to fall back to 
 | `GET /v1/runs` | your recent runs |
 | `POST /v1/runs/:id/rerun` `{ audience?, options?, webhook_url? }` | new clips from an already stored video, no re-upload (skips re-watching) |
 | `GET /v1/videos` | videos you have uploaded, to re-run |
+| `GET /v1/runs/:id/clips.zip` | every clip of a run in one zip download (send your API key as for any other call) |
 | `GET /v1/clips/:id` | one clip with a fresh link |
 | `POST /v1/clips/:id/rating` `{ rating: -1 \| 0 \| 1 }` | 👍/👎. Your ratings teach your audience's caption style (only yours) |
 | `POST /v1/clips/:id/regenerate-caption` | write a new caption and re-render |

@@ -35,7 +35,7 @@ const { expandPersona, customPersonaId, isPresetId } = require("./lib/personas")
 const { cleanCaption } = require("./lib/captions");
 const { AiError, friendlyMessage, ledger } = require("./lib/ai");
 const { createRun, rerun, parseOptions } = require("./intake");
-const { findMoment, applyCaption, regenerate, streamClipVideo, deleteRun } = require("./clips");
+const { findMoment, applyCaption, regenerate, streamClipVideo, streamClipsZip, deleteRun } = require("./clips");
 const { HttpError } = require("./errors");
 const { uploadMiddleware } = require("./upload");
 const accounts = require("./accounts");
@@ -162,6 +162,12 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
     const clips = (await store.listJobClips(pool, id)).map((c) => clipJson({ ...c, source_label: job.source_label }));
     const { analysis: _a, source_uri: _s, ...safeJob } = job; // internal columns stay server-side
     res.json({ job: { ...safeJob, moments: Array.isArray(job.analysis) ? job.analysis.length : null }, clips });
+  }));
+
+  // Every clip of a run in one download.
+  app.get("/api/jobs/:id/clips.zip", canView, safe(async (req, res) => {
+    const job = await ownedJob(req, res); if (!job) return;
+    await streamClipsZip(res, job, await store.listJobClips(pool, job.id));
   }));
 
   app.post("/api/jobs/:id/recaption", canEdit, safe(async (req, res) => {
