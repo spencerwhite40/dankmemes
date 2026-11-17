@@ -80,7 +80,10 @@ async function chat({ messages, system, models: chain, maxTokens = 4096, retries
         lastErr = err;
         ledger.record({ provider, model, kind: urls.length ? "video" : "text", usage: {}, latencyMs: Date.now() - t0, ok: false, error: err && err.message });
         if (err instanceof AiError && err.code === "out_of_credit") {
-          if (!providerDown(provider)) console.error(`[funding] ${provider} is out of credit. Top it up (or raise its auto-reload). Using the next provider meanwhile.`);
+          if (!providerDown(provider)) {
+            console.error(`[funding] ${provider} is out of credit. Top it up (or raise its auto-reload). Using the next provider meanwhile.`);
+            require("../../alerts").alert(`out_of_credit:${provider}`, `${provider} is out of credit. Top it up (or raise its auto-reload). Runs are using the next provider meanwhile.`);
+          }
           unfunded.set(provider, Date.now() + FUNDING_DOWN_MS);
         }
         if (!(err instanceof AiError) || !err.retryable) break;   // permanent for this model -> next model

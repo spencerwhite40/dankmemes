@@ -5,6 +5,7 @@ const { migrate } = require("./migrate");
 const { startMemeBuilderWorker } = require("./worker");
 
 (async () => {
+  require("./alerts").watchProcess("worker");
   const pool = makePool();
   await migrate(pool);
   require("./lib/ai").ledger.setPool(pool);

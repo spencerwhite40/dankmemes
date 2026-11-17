@@ -16,6 +16,7 @@ const { registerBillingWebhook, registerBillingRoutes } = require("./billing/rou
 const { registerDataRoutes } = require("./data-routes");
 const legal = require("./legal");
 const mail = require("./email");
+const alerts = require("./alerts");
 
 function buildApp(pool) {
   const app = express();
@@ -47,6 +48,7 @@ function buildApp(pool) {
 }
 
 async function main() {
+  alerts.watchProcess("web");
   const pool = makePool();
   await migrate(pool);
   require("./lib/ai").ledger.setPool(pool);

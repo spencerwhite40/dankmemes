@@ -16,6 +16,7 @@ function registerBillingWebhook(app, { pool }) {
       res.json({ received: true, ...out });
     } catch (e) {
       console.error("[billing] event failed", event.id, event.type, e && e.message);
+      require("../alerts").alert("billing_event_failed", `${event.type} (${event.id}): ${e && e.message}. Stripe will retry it.`);
       res.status(500).json({ error: "failed, please retry" });   // Stripe retries on any non-2xx
     }
   });

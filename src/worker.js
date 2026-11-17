@@ -22,6 +22,7 @@ const store = require("./lib/store");
 const { processJob } = require("./lib/pipeline");
 const { friendlyMessage, AiError, ledger } = require("./lib/ai");
 const accounts = require("./accounts");
+const alerts = require("./alerts");
 
 const STEP_LABELS = {
   fetch: "getting the video", prepare: "preparing it", upload: "uploading it", analyze: "watching it", analyzed: "writing captions",
@@ -61,7 +62,8 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
       for (;;) {
         if (Date.now() - lastStaleCheck >= STALE_CHECK_MS) {
           lastStaleCheck = Date.now();
-          await store.requeueStale(pool);
+          const orphaned = await store.requeueStale(pool);
+          if (orphaned) alerts.alert("orphaned_runs", `${orphaned} run(s) were found stuck (their machine went away) and were put back in the queue or failed.`);
         }
         const job = await store.claimNextJob(pool);
         if (!job) return;
@@ -88,6 +90,10 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
             const cur = await store.getJob(pool, job.id).catch(() => null);
             const step = cur && STEP_LABELS[cur.stage];
             await store.failJob(pool, job.id, friendlyMessage(err) + (step ? ` (it was ${step})` : "")).catch(() => {});
+            // Tell the owner of the service about failures that are the service's problem, not the customer's (a bad video isn't one).
+            if (err instanceof AiError || /ffmpeg|ENOSPC|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|took too long/i.test(err && err.message || "")) {
+              alerts.alert(err instanceof AiError ? "ai_failure" : "system_error", `run ${job.id} failed${step ? ` while ${step}` : ""}: ${err && err.message}`);
+            }
             await afterRun(pool, job.id, { log });
           }
         }

@@ -141,7 +141,7 @@ async function retryJob(pool, id) {
  * the process can't loop forever.
  */
 async function requeueStale(pool, { staleMinutes = 3, maxAttempts = 3 } = {}) {   // a live run beats its heartbeat every 30s, so 3 minutes of silence means the process is gone
-  await pool.query(
+  const r = await pool.query(
     `update public.meme_builder_jobs
         set status = case when attempts >= $2 then 'error' else 'queued' end,
             error = case when attempts >= $2 then 'The server restarted while this was running too many times.' else error end,
@@ -149,6 +149,7 @@ async function requeueStale(pool, { staleMinutes = 3, maxAttempts = 3 } = {}) { 
       where status = 'running' and heartbeat_at < now() - ($1 || ' minutes')::interval`,
     [String(staleMinutes), maxAttempts],
   );
+  return (r && r.rowCount) || 0;   // how many orphaned runs were found
 }
 
 async function listJobs(pool, { limit = 50, ownerId = "default" } = {}) {

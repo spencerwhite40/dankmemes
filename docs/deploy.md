@@ -72,6 +72,13 @@ Create the products and prices, the webhook at `https://YOUR-DOMAIN/billing/webh
 
 Set the company details. Get the pages reviewed, then set `LEGAL_REVIEWED=yes` to remove the draft banner.
 
+## 8b. Alerts (optional, free)
+
+Create an incoming webhook in Slack or Discord and set it as `ALERT_WEBHOOK_URL` on **both** the web app and the Fly machine. You then get one message per kind of problem
+per 10 minutes for: an AI provider out of credit, a run failing because the AI service or the machine broke (not because of a customer's bad video),
+runs found stuck after a crash, a Stripe event that failed to process, and a crash of either process. Without the URL nothing is sent.
+This is a light "tell me when it breaks", not a replacement for an uptime monitor: point a free one (UptimeRobot, Better Stack) at `https://YOUR-DOMAIN/health` too.
+
 ## 9. Check that it works (in this order)
 
 1. `curl https://YOUR-DOMAIN/health` returns `{"ok":true}`. The logs show `[setup]` warnings for anything you haven't set yet.
