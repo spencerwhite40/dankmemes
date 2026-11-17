@@ -39,6 +39,7 @@ const { findMoment, applyCaption, regenerate, streamClipVideo, deleteRun } = req
 const { HttpError } = require("./errors");
 const { uploadMiddleware } = require("./upload");
 const accounts = require("./accounts");
+const { notifyJobQueued } = require("./lib/queue-signal");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BASE = "/api";
@@ -67,6 +68,21 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
   const idParam = (req, res) => {
     if (!UUID_RE.test(req.params.id || "")) { res.status(400).json({ error: "invalid id" }); return null; }
     return req.params.id;
+  };
+
+  // A run or a clip is only reachable by the account that owns it; anyone else gets 404, the same as for an id that doesn't exist.
+  const ownedJob = async (req, res) => {
+    const id = idParam(req, res); if (!id) return null;
+    const job = await store.getJob(pool, id);
+    if (!job || job.owner_id !== req.user.id) { res.status(404).json({ error: "not found" }); return null; }
+    return job;
+  };
+  const ownedClip = async (req, res) => {
+    const id = idParam(req, res); if (!id) return null;
+    const clip = await store.getClip(pool, id);
+    const job = clip && await store.getJob(pool, clip.job_id);
+    if (!clip || !job || job.owner_id !== req.user.id) { res.status(404).json({ error: "not found" }); return null; }
+    return clip;
   };
 
   // ── Audiences ──────────────────────────────────────────────────────────
@@ -141,9 +157,8 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
   }));
 
   app.get("/api/jobs/:id", canView, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const job = await store.getJob(pool, id);
-    if (!job) return res.status(404).json({ error: "not found" });
+    const job = await ownedJob(req, res); if (!job) return;
+    const id = job.id;
     const clips = (await store.listJobClips(pool, id)).map((c) => clipJson({ ...c, source_label: job.source_label }));
     const { analysis: _a, source_uri: _s, ...safeJob } = job; // internal columns stay server-side
     res.json({ job: { ...safeJob, moments: Array.isArray(job.analysis) ? job.analysis.length : null }, clips });
@@ -156,20 +171,12 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
   }));
 
   app.post("/api/jobs/:id/retry", canEdit, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const job = await store.retryJob(pool, id);
+    const owned = await ownedJob(req, res); if (!owned) return;
+    // A retry starts the work again, so it needs everything a new run needs: a confirmed email, minutes left, a free slot.
+    try { await accounts.assertCanStart(pool, req.user.id, { fileBytes: 0 }); } catch (e) { if (e instanceof HttpError) return res.status(e.status).json({ error: e.message, code: e.code }); throw e; }
+    const job = await store.retryJob(pool, owned.id);
     if (job) notifyJobQueued();
     return job ? res.json({ job: { id: job.id, status: job.status } }) : res.status(409).json({ error: "Only failed runs can be retried." });
-  }));
-
-  app.delete("/api/jobs/:id", canEdit, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const job = await store.getJob(pool, id);
-    if (job && job.status === "running") return res.status(409).json({ error: "That run is still processing." });
-    const gone = await store.deleteJob(pool, id);
-    if (!gone) return res.status(404).json({ error: "not found" });
-    for (const u of [...gone.clipUris, gone.sourceUri]) await storage.remove(u).catch(() => {});
-    res.json({ ok: true });
   }));
 
   // ── Library + clips ────────────────────────────────────────────────────
@@ -180,42 +187,36 @@ function registerMemeBuilderRoutes(app, { asyncRoute, pool, requireAdmin, requir
   }));
 
   app.patch("/api/clips/:id", canEdit, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
     const caption = cleanCaption(typeof (req.body || {}).caption === "string" ? req.body.caption : "");
     if (!caption || caption.length > 200) return res.status(400).json({ error: "Caption must be 1 to 200 characters." });
-    const clip = await store.getClip(pool, id);
-    if (!clip) return res.status(404).json({ error: "not found" });
+    const clip = await ownedClip(req, res); if (!clip) return;
     res.json({ clip: clipJson(await applyCaption(pool, clip, caption)) });
   }));
 
   // The AI writes a fresh caption for this clip (a different angle from the current one) and it is burned in.
   app.post("/api/clips/:id/regenerate-caption", canEdit, safe(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const clip = await store.getClip(pool, id);
-    if (!clip) return res.status(404).json({ error: "not found" });
+    const clip = await ownedClip(req, res); if (!clip) return;
     res.json({ clip: clipJson(await regenerate(pool, clip)) });
   }));
 
   app.post("/api/clips/:id/rating", canEdit, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
     const rating = Number((req.body || {}).rating);
     if (![-1, 0, 1].includes(rating)) return res.status(400).json({ error: "rating must be -1, 0 or 1" });
-    const updated = await store.setRating(pool, id, rating);
+    const owned = await ownedClip(req, res); if (!owned) return;
+    const updated = await store.setRating(pool, owned.id, rating);
     return updated ? res.json({ clip: clipJson(updated) }) : res.status(404).json({ error: "not found" });
   }));
 
   app.delete("/api/clips/:id", canEdit, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const uri = await store.deleteClip(pool, id);
+    const owned = await ownedClip(req, res); if (!owned) return;
+    const uri = await store.deleteClip(pool, owned.id);
     if (!uri) return res.status(404).json({ error: "not found" });
     await storage.remove(uri).catch(() => {});
     res.json({ ok: true });
   }));
 
   app.get("/api/clips/:id/video", canView, asyncRoute(async (req, res) => {
-    const id = idParam(req, res); if (!id) return;
-    const clip = await store.getClip(pool, id);
-    if (!clip) return res.status(404).json({ error: "not found" });
+    const clip = await ownedClip(req, res); if (!clip) return;
     await streamClipVideo(req, res, clip, { download: !!req.query.download });
   }));
 }
