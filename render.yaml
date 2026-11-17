@@ -1,0 +1,58 @@
+# Render blueprint for the WEB app (pages + API). The processing machine is separate: see fly.toml and docs/deploy.md.
+# Secrets are marked `sync: false`: Render asks for them in its dashboard, so they are typed there and never live in git.
+# Check this file against Render's current blueprint format on the first deploy (docs/deploy.md has the steps).
+services:
+  - type: web
+    name: dankmemes
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MEME_BUILDER_RUNNER
+        value: "off"                     # the Fly machine does the processing, not the web app
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true              # a long random string, made by Render
+      - key: APP_URL
+        sync: false                      # https://your-domain
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: COMPANY_NAME
+        sync: false
+      - key: COMPANY_ADDRESS
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: COPYRIGHT_EMAIL
+        sync: false
+      - key: LEGAL_JURISDICTION
+        sync: false
+      # The Stripe price ids (STRIPE_PRICE_*, ten of them) are added by hand in the dashboard: docs/billing.md lists them.
