@@ -35,8 +35,10 @@ function render(name) {
   const nav = Object.entries(PAGES).map(([k, t]) => `<a href="/${k}">${esc(t)}</a>`).join(" · ");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050506"><link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>${esc(PAGES[name])} - ${esc(v.APP_NAME)}</title><link rel="stylesheet" href="/styles.css"></head>
-<body><header class="top"><h1><a href="/" style="color:inherit;text-decoration:none">${esc(v.APP_NAME)}</a></h1></header>
+<body><header class="bar"><div class="wrap"><a class="logo" href="/" aria-label="${esc(v.APP_NAME)} home"><span class="d">dank</span><span class="m">memes</span></a>
+<nav aria-label="Main"><a class="btn" href="/app">Open the studio</a></nav></div></header>
 <main class="legal">${draft}<h2>${esc(PAGES[name])}</h2><p class="muted">Last updated ${esc(UPDATED)}</p>${body}
 <hr><p class="muted">${nav}</p></main></body></html>`;
 }

@@ -1,4 +1,4 @@
-# Meme Builder
+# dankmemes
 
 Pick an audience, give it a video, get captioned vertical reaction-meme clips.
 
@@ -22,7 +22,7 @@ each pairing against the actual clip, and renders 9:16 clips with the caption bu
 cp .env.example .env     # fill in DATABASE_URL, GOOGLE_API_KEY (and ANTHROPIC/OPENAI keys), ADMIN_EMAILS (and R2 for real use)
 npm install
 npm run migrate          # tables are also created on boot
-npm start                # http://localhost:3000
+npm start                # http://localhost:3000 (landing page) and /app (the studio)
 npm test               # the API integration tests also run when DATABASE_URL_TEST points at a scratch Postgres
 ```
 
@@ -52,6 +52,9 @@ A versioned public API (API keys, per-customer isolation, usage, expiring playba
 
 ```
 public/            the whole interface (plain HTML + JS, no build step)
+  index.html       landing page at /, with live prices from /api/pricing (landing.js)
+  app.html         the studio at /app: sign in, drop a video, pick a crowd, watch clips arrive (app.js)
+  styles.css       the brand: black, acid green, hot pink, spray-paint type (fonts in public/fonts, all OFL/Apache)
 src/server.js      web app (API + page) and, unless disabled, the runner
 src/routes.js      the API
 src/worker.js      the job runner (claims queued jobs, retries, watchdog)

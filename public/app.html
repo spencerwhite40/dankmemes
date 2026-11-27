@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>The Lab · dankmemes</title>
+  <meta name="theme-color" content="#050506">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/anton-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/rubik-wet-paint-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="studio">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="bar">
+    <div class="wrap">
+      <a class="logo" href="/" aria-label="dankmemes home"><span class="d">dank</span><span class="m">memes</span></a>
+      <div class="who">
+        <button type="button" id="mins-pill" class="pill" hidden><span class="dot"></span><span id="mins-text"></span></button>
+        <button type="button" id="logout" class="link" hidden>Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap main">
+      <p id="notice" class="note good" role="status" hidden></p>
+
+      <!-- Choose a new password (arrived from the reset email) -->
+      <section id="reset-card" class="auth" hidden>
+        <div class="tape" aria-hidden="true"></div>
+        <div class="panel">
+          <h1>New <span class="tag">password</span></h1>
+          <form id="reset-form">
+            <label class="sr-only" for="new-password">New password</label>
+            <input id="new-password" type="password" placeholder="New password (10+ characters)" autocomplete="new-password" minlength="10" required>
+            <button type="submit" class="btn">Change password</button>
+          </form>
+          <p id="reset-error" class="error" role="alert"></p>
+        </div>
+      </section>
+
+      <!-- Sign in / create account -->
+      <section id="login" class="auth" hidden aria-labelledby="auth-h">
+        <div class="tape" aria-hidden="true"></div>
+        <div class="panel">
+          <h1 id="auth-h"><span id="auth-title">Welcome back,</span><span class="tag" id="auth-tag">degenerate</span></h1>
+          <div class="seg" role="tablist" aria-label="Sign in or create an account">
+            <button type="button" id="tab-in" class="on" role="tab" aria-selected="true">Sign in</button>
+            <button type="button" id="tab-up" role="tab" aria-selected="false">Create account</button>
+          </div>
+          <form id="login-form">
+            <label class="sr-only" for="name">Your name</label>
+            <input id="name" placeholder="Your name (optional)" autocomplete="name" hidden>
+            <label class="sr-only" for="email">Email</label>
+            <input id="email" type="email" placeholder="Email" autocomplete="email" inputmode="email" required>
+            <label class="sr-only" for="password">Password</label>
+            <input id="password" type="password" placeholder="Password" autocomplete="current-password" minlength="10" required>
+            <p id="pw-hint" class="muted" hidden>At least 10 characters.</p>
+            <label id="terms-row" class="check" hidden><input type="checkbox" id="terms"> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+            <button id="auth-submit" type="submit" class="btn">Sign in</button>
+          </form>
+          <button type="button" id="forgot-link" class="link">Forgot your password?</button>
+          <form id="forgot-form" hidden>
+            <p class="muted">Enter your email and we'll send a link to choose a new password.</p>
+            <label class="sr-only" for="forgot-email">Email</label>
+            <input id="forgot-email" type="email" placeholder="Email" autocomplete="email" required>
+            <button type="submit" class="btn">Send reset link</button>
+            <button type="button" id="forgot-back" class="link">Back to sign in</button>
+          </form>
+          <p id="login-error" class="error" role="alert"></p>
+        </div>
+      </section>
+
+      <!-- The whole flow -->
+      <div id="app" hidden>
+        <section class="note" id="verify-banner" hidden>
+          <p id="verify-text" style="margin:0 0 8px"></p>
+          <div class="row"><button type="button" id="verify-resend" class="small">Send the email again</button><span id="verify-msg" class="muted"></span></div>
+        </section>
+
+        <section class="box" id="locked-card" hidden>
+          <h2>Your subscription ended</h2>
+          <p id="locked-text" class="muted"></p>
+          <p class="muted">Nothing has been deleted. Subscribe again and your videos, clips and top-up minutes come back exactly as you left them.</p>
+        </section>
+
+        <section class="lab" id="maker" aria-labelledby="lab-h">
+          <div class="lab-head">
+            <h1 id="lab-h">Cook some <span class="tag">memes</span></h1>
+            <p class="kicker" id="limits-line"></p>
+          </div>
+
+          <div>
+            <div class="stepno"><b>1</b><span>Drop a video</span></div>
+            <label class="drop" id="drop" for="file">
+              <input id="file" type="file" accept="video/*,.mkv,.mov,.webm,.mp4" aria-describedby="drop-hint">
+              <svg class="up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+              <span class="big">Drop it <span class="tag">here</span></span>
+              <span class="hint" id="drop-hint">or tap to pick a file. Podcasts, streams, interviews: anything with people reacting. mp4, mov, webm or mkv.</span>
+            </label>
+            <div class="picked" id="picked" hidden>
+              <video id="picked-video" muted playsinline preload="metadata" aria-hidden="true"></video>
+              <div><div class="nm" id="picked-name"></div><div class="sz" id="picked-size"></div><div class="bad" id="picked-bad" role="alert"></div></div>
+              <button type="button" id="picked-clear" class="small">Swap video</button>
+            </div>
+            <div id="reuse-wrap" hidden>
+              <div class="reuse">or remix one you already uploaded</div>
+              <div class="reuse-row">
+                <label class="sr-only" for="previous">A video you already uploaded</label>
+                <select id="previous"><option value="">Pick an earlier video</option></select>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="stepno"><b>2</b><span>Who's laughing?</span><em id="aud-count"></em></div>
+            <div class="chips" id="auds" role="radiogroup" aria-label="Audience"></div>
+            <form class="newaud" id="newaud" hidden>
+              <p class="marker" style="margin:0;font-size:20px;color:var(--pink)">Describe your crowd</p>
+              <p class="muted" style="font-size:14px">A few lines is plenty. The robot fills in their slang, pet peeves and in-jokes. Takes about a minute.</p>
+              <div class="examples" id="aud-examples" aria-label="Examples"></div>
+              <div>
+                <label class="fl" for="aud-name">Name</label>
+                <input id="aud-name" maxlength="80" placeholder="e.g. ER nurses on night shift" required>
+              </div>
+              <div>
+                <label class="fl" for="aud-notes">What are they like?</label>
+                <textarea id="aud-notes" maxlength="20000" placeholder="Who they are, what their days look like, what drives them nuts, words they use, jokes they make." required></textarea>
+              </div>
+              <p id="aud-error" class="error" role="alert"></p>
+              <div class="row">
+                <button type="button" id="aud-cancel" class="link">Cancel</button>
+                <button type="submit" id="aud-save" class="btn pink">Build my crowd</button>
+              </div>
+            </form>
+          </div>
+
+          <div>
+            <div class="stepno"><b>3</b><span>Send it</span></div>
+            <div class="go">
+              <button id="make" type="button" class="btn big" disabled>Make memes</button>
+              <p class="muted" id="make-hint">Pick a video to start.</p>
+            </div>
+            <div id="upload-wrap" hidden style="margin-top:14px">
+              <div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="kicker" id="upload-label">Uploading</span><span class="kicker" id="upload-pct">0%</span></div>
+              <div class="upbar" role="progressbar" aria-labelledby="upload-label" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="upload-bar"><span></span></div>
+            </div>
+            <p id="make-error" class="error" role="alert" style="margin-top:10px"></p>
+          </div>
+        </section>
+
+        <section id="run" class="run" hidden aria-labelledby="run-title">
+          <p class="kicker">Now cooking</p>
+          <h2 id="run-title">Working…</h2>
+          <div class="meter-run" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="run-meter"><span></span></div>
+          <p class="quip" id="quip" aria-live="polite"></p>
+          <ol id="steps"></ol>
+          <p id="run-status" class="muted" aria-live="polite"></p>
+          <div id="notes"></div>
+          <div class="row"><button id="retry" type="button" class="btn pink" hidden>Try again</button></div>
+        </section>
+
+        <section id="clips-wrap" hidden aria-labelledby="clips-title">
+          <div class="clips-head">
+            <h2 id="clips-title">Clips</h2>
+            <a id="zip" class="btn" href="#" hidden download>Download all</a>
+          </div>
+          <div id="clips" class="grid"></div>
+        </section>
+
+        <div class="cols">
+          <section class="box" id="stash" aria-labelledby="stash-h">
+            <h2 id="stash-h">Your stash</h2>
+            <ul id="recent" class="recent"></ul>
+          </section>
+
+          <section class="box" id="account" aria-labelledby="plan-h">
+            <h2 id="plan-h">Plan: <span id="plan-name" class="tag" style="font-size:1.1em"></span></h2>
+            <p id="whoami" class="muted mono" style="font-size:13px;overflow-wrap:anywhere"></p>
+            <div id="meters" class="meters"></div>
+            <p id="plan-note" class="muted" style="font-size:14px"></p>
+          </section>
+        </div>
+
+        <section class="box" id="pricing-card" hidden aria-labelledby="pricing-h">
+          <h2 id="pricing-h">Upgrade</h2>
+          <div class="tabs" role="tablist">
+            <button type="button" id="per-monthly" class="tab on" role="tab">Monthly</button>
+            <button type="button" id="per-annual" class="tab" role="tab">Annual</button>
+          </div>
+          <div id="plans" class="plans"></div>
+          <p class="muted" style="font-size:14px">Minutes are the length of the videos you submit, counted per month. Unused minutes don't roll over.</p>
+          <div id="packs-wrap">
+            <h3>Need more minutes this month?</h3>
+            <div id="packs" class="plans"></div>
+            <p class="muted" style="font-size:14px">Top-up packs are for subscribers. Their minutes are used after your monthly minutes and never expire.</p>
+          </div>
+          <p id="billing-note" class="muted"></p>
+          <div id="cancel-panel" class="note" hidden>
+            <p id="cancel-text"></p>
+            <div class="row">
+              <button type="button" id="cancel-stay" class="small on" hidden></button>
+              <button type="button" id="cancel-go" class="small"></button>
+              <button type="button" id="cancel-keep" class="small">Keep my plan</button>
+            </div>
+          </div>
+          <div class="row">
+            <button type="button" id="manage-billing" class="small" hidden>Manage billing</button>
+            <button type="button" id="cancel-btn" class="link" hidden>Cancel subscription</button>
+            <button type="button" id="resume-btn" class="small" hidden>Keep my subscription</button>
+          </div>
+          <p id="billing-error" class="error" role="alert"></p>
+        </section>
+
+        <details class="box" id="keys-card">
+          <summary><h2>API keys</h2></summary>
+          <p id="keys-intro" class="muted">Let another app use your account through the API. A key is shown once, so copy it when it appears.</p>
+          <ul id="keys" class="recent"></ul>
+          <form id="key-form" class="keyform">
+            <label class="sr-only" for="key-name">Key name</label>
+            <input id="key-name" placeholder="Name (e.g. My app)" required>
+            <button type="submit">Create key</button>
+          </form>
+          <pre id="key-new" class="note" hidden></pre>
+          <p id="key-error" class="error" role="alert"></p>
+        </details>
+      </div>
+    </div>
+  </main>
+  <footer class="foot">
+    <div class="wrap">
+      <span>Only upload video you have the rights to use.</span>
+      <nav aria-label="Legal"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/copyright">Copyright</a></nav>
+    </div>
+  </footer>
+  <script src="/app.js"></script>
+</body>
+</html>

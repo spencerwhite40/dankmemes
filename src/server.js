@@ -17,6 +17,17 @@ const { registerDataRoutes } = require("./data-routes");
 const legal = require("./legal");
 const mail = require("./email");
 const alerts = require("./alerts");
+const { PLANS } = require("./plans");
+
+const PUBLIC = path.join(__dirname, "..", "public");
+/** Every plan's headline numbers, for the price cards on the landing page (src/plans.js is the only source). */
+const publicPricing = () => ({
+  plans: Object.entries(PLANS).map(([name, p]) => ({
+    name, label: p.label, minutes: p.monthlyMinutes, price_monthly: p.priceMonthly, price_annual: p.priceAnnual,
+    max_video_minutes: p.maxVideoMinutes, clips_per_run: p.clipsPerRun, retention_days: p.retentionDays,
+    concurrent_runs: p.concurrentRuns, watermark: !!p.watermark, api_access: !!p.apiAccess,
+  })),
+});
 
 function buildApp(pool) {
   const app = express();
@@ -27,6 +38,8 @@ function buildApp(pool) {
   app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
+  app.get("/api/pricing", (_req, res) => res.json(publicPricing()));   // the landing page's price cards; no sign-in
+  app.get("/app", (_req, res) => res.sendFile(path.join(PUBLIC, "app.html")));
   const needUser = requireUser(pool);              // signed in (a locked account may still reach billing)
   const needActive = requireActiveUser(pool);      // signed in and not locked: for media, runs, keys
   registerAuthRoutes(app, { pool, asyncRoute });
@@ -37,7 +50,8 @@ function buildApp(pool) {
   app.use("/v1", buildV1(pool));            // the public API (API-key auth); see docs/api.md
 
   legal.registerLegalRoutes(app);           // /terms /privacy /refunds /copyright
-  app.use(express.static(path.join(__dirname, "..", "public")));
+  app.use("/fonts", express.static(path.join(PUBLIC, "fonts"), { maxAge: "365d", immutable: true }));
+  app.use(express.static(PUBLIC));
   // JSON errors for the API, so the page can show a plain message.
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
