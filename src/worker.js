@@ -45,7 +45,19 @@ function withTimeout(promise, ms, message = TOO_LONG) {
 }
 const STALE_CHECK_MS = 60 * 1000;   // looking for orphaned runs is one cheap query
 
-function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPauseMs = RETRY_PAUSE_MS, afterRun = require("./hooks").afterRun } = {}) {
+function secondsEnv(name) { const n = Number(process.env[name]); return Number.isFinite(n) && n > 0 ? n * 1000 : null; }
+
+/**
+ * The defaults suit the runner inside the web app; src/run-worker.js (the dedicated machine) sets these from its env.
+ * idlePollMs:     how often an idle runner checks the queue (WORKER_IDLE_POLL_SECONDS there, default 30 s). A dedicated machine
+ *                 started for a run checks every couple of seconds, because the web app's "a run was queued" signal
+ *                 doesn't reach another process.
+ * bootDelayMs:    first look after start-up (default 15 s; 0 on a machine that was started for a run).
+ * exitWhenIdleMs: stop the process once nothing has run for this long (WORKER_IDLE_EXIT_SECONDS). On Fly the machine
+ *                 then stops and costs nothing; the web app starts it again when a run is queued (src/lib/scaler.js).
+ */
+function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPauseMs = RETRY_PAUSE_MS, afterRun = require("./hooks").afterRun,
+  idlePollMs = IDLE_POLL_MS, bootDelayMs = 15 * 1000, exitWhenIdleMs = null, onIdleExit = () => process.exit(0) } = {}) {
   if ((process.env.MEME_BUILDER_RUNNER || "").toLowerCase() === "off") {
     log.log("[meme-builder] runner disabled via MEME_BUILDER_RUNNER=off");
     return { stop() {}, tick: async () => {} };
@@ -53,10 +65,13 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
   log.log(`[meme-builder] runner started, storage backend: ${storage.backendName()}${storage.backendName() === "local" ? " (TEMPORARY: files are lost on every restart; set the R2 credentials)" : ""}`);
   let busy = false;
   let lastStaleCheck = 0;
+  let lastWork = Date.now();
+  let exited = false;
 
   async function tick() {
     if (busy) return;
     busy = true;
+    let ran = false;
     try {
       // Drain: keep going while there is queued work, then go back to idle polling.
       for (;;) {
@@ -66,7 +81,8 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
           if (orphaned) alerts.alert("orphaned_runs", `${orphaned} run(s) were found stuck (their machine went away) and were put back in the queue or failed.`);
         }
         const job = await store.claimNextJob(pool);
-        if (!job) return;
+        if (!job) break;
+        ran = true;
         log.log(`[meme-builder] job ${job.id} started (attempt ${job.attempts})`);
         if (await accounts.isLocked(pool, job.owner_id).catch(() => false)) {
           await store.failJob(pool, job.id, "This account's subscription has ended, so the run was not started.").catch(() => {});
@@ -103,16 +119,24 @@ function startMemeBuilderWorker(pool, { log = console, run = processJob, retryPa
       log.error("[meme-builder] tick error:", err && err.message);
     } finally {
       busy = false;
+      if (ran) lastWork = Date.now();
+    }
+    if (exitWhenIdleMs && !exited && Date.now() - lastWork >= exitWhenIdleMs) {
+      exited = true;
+      log.log(`[meme-builder] nothing to do for ${Math.round(exitWhenIdleMs / 1000)} s, stopping this machine`);
+      stop();
+      onIdleExit();
     }
   }
 
-  const timer = setInterval(tick, IDLE_POLL_MS);
+  const timer = setInterval(tick, idlePollMs);
   if (timer.unref) timer.unref();
   const unsubscribe = onJobQueued(tick);
   // Pick up anything left queued across a restart without waiting a full poll.
-  const boot = setTimeout(tick, 15 * 1000);
+  const boot = setTimeout(tick, bootDelayMs);
   if (boot.unref) boot.unref();
-  return { stop: () => { clearInterval(timer); clearTimeout(boot); unsubscribe(); }, tick };
+  function stop() { clearInterval(timer); clearTimeout(boot); unsubscribe(); }
+  return { stop, tick };
 }
 
-module.exports = { startMemeBuilderWorker, withTimeout, MAX_JOB_MS };
+module.exports = { startMemeBuilderWorker, withTimeout, secondsEnv, MAX_JOB_MS };

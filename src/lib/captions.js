@@ -13,9 +13,11 @@
 
 const { chatJSON, textModels } = require("./ai");
 const { personaToPrompt, pickSeeds, spiceRule, overusedRule } = require("./personas");
+const { mapLimit } = require("./cuts");
 
 // Small batches: smaller replies are far more reliable than one huge JSON answer.
 const CHUNK = 5;
+const CAPTION_CONCURRENCY = 3;   // caption batches written at once after the first (each is one AI call)
 
 /** Models occasionally leak stray CJK characters into English text; strip them and tidy spacing. */
 function cleanCaption(s) {
@@ -68,8 +70,9 @@ const SCORE_RULE =
  * onChunk(done, total) is called as each batch finishes (a "still alive" signal for the page).
  * stats (optional object) is filled with { batches, failed } so the page can say when part of the video lost its captions.
  * onModel(model) is told which model answered each batch (so the page can say when a backup wrote them).
+ * concurrency: how many batches after the first are written at once.
  */
-async function writeCaptions(persona, moments, { taste = "", candidates = 3, onChunk, onModel, chat, stats } = {}) {
+async function writeCaptions(persona, moments, { taste = "", candidates = 3, onChunk, onModel, chat, stats, concurrency = CAPTION_CONCURRENCY } = {}) {
   const seedState = {};
   const usedCaptions = [];
   const chunks = [];
@@ -89,10 +92,16 @@ async function writeCaptions(persona, moments, { taste = "", candidates = 3, onC
       return false;
     }
   };
-  for (const [i, c] of chunks.entries()) {
+  // The first batch goes alone, so every later batch knows what was already written (fewer repeats). The rest go a few at a
+  // time instead of one after another: on a long video that is the difference between 6 waits and 3.
+  let done = 0;
+  const one = async (c, i) => {
     if (!(await attempt(c, `${i + 1}/${chunks.length}`))) failed.push(c);
-    if (onChunk) { try { await onChunk(i + 1, chunks.length); } catch { /* progress is best effort */ } }
-  }
+    done += 1;
+    if (onChunk) { try { await onChunk(done, chunks.length); } catch { /* progress is best effort */ } }
+  };
+  if (chunks.length) await one(chunks[0], 0);
+  await mapLimit(chunks.slice(1), concurrency, (c, i) => one(c, i + 1));
   // A lost batch is a lost slice of the video: try each failed one once more before giving up on it.
   let stillFailed = 0;
   for (const c of failed) { if (!(await attempt(c, "retry"))) stillFailed += 1; }

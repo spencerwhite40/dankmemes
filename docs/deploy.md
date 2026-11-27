@@ -14,9 +14,10 @@ never into git or chat. Do the steps in order: each one needs the one before it.
 ## Rough fixed monthly cost to have it running
 
 From the providers' pricing pages as read earlier (check them when you sign up): Render web service about $7 to $25, Neon pay-as-you-go from $0,
-Fly processing machine about $33 (performance-1x) or $66 (performance-2x, which is what `fly.toml` asks for), R2 $0.015 per GB stored and free to download.
-Roughly $50 to $120 a month before any customers, plus the AI providers' usage (`docs/funding.md`).
-The Fly machine runs all the time (there's no auto-stop configured), so use the smaller size while testing.
+Fly processing machines are billed by the second only while they run (fly.io/pricing, read Nov 27 2026): performance-4x, which `fly.toml` asks for,
+is $0.1833 an hour, and a stopped one costs only its disk ($0.15 per GB a month). R2 $0.015 per GB stored and free to download.
+Roughly $10 to $40 a month before any customers, plus the AI providers' usage (`docs/funding.md`).
+At worst, with all `WORKER_MAX_MACHINES` (default 3) busy around the clock, the machines cost 3 x $0.1833 = $0.55 an hour, about $396 a month.
 
 ## 1. Database (Neon)
 
@@ -44,13 +45,27 @@ fly deploy
 ```
 
 Add `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` to the secrets if you have them. This machine doesn't need the Stripe, email or legal settings.
-Use `fly scale count 2` later if runs queue up: several machines safely share one queue.
+
+**No waiting in line.** Every run gets its own machine, up to a cap, the way most video services work:
+
+```bash
+fly scale count worker=3 -a dankmemes-worker        # a pool of 3 machines; they stop on their own when idle
+fly tokens create deploy -a dankmemes-worker        # paste the token into Render as FLY_API_TOKEN
+```
+
+When a run is queued, the web app starts a stopped machine for it (a second or two), and that machine picks it up straight away. A machine
+that has had nothing to do for 2 minutes (`WORKER_IDLE_EXIT_SECONDS`) stops itself. `WORKER_MAX_MACHINES` on Render (default 3) is the cost
+cap: keep it equal to the `fly scale count`. Only when every machine is busy do runs wait, and then paid plans go ahead of free ones
+(a free run waiting more than 2 minutes, `PRIORITY_AGING_SECONDS`, is treated the same, so nobody waits forever). You get an alert
+(`queue_at_cap`) when that happens; raise both numbers if it keeps happening. Without `FLY_API_TOKEN` on Render nothing starts the
+machines again, so then delete `WORKER_IDLE_EXIT_SECONDS` from `fly.toml` and run one always-on machine instead.
 
 **How fast it renders (measured, not guessed):** with real ffmpeg on a synthetic 720p test video, a 25-second clip took about 9 seconds on a
 2-core machine and about 6 seconds on 4 cores, so roughly 3 minutes of rendering for 20 clips on the 2-core size. Real footage and 1080p sources will be
 somewhat slower, so time one real video. Rendering two clips at once gained about 1.3x on 4 cores and almost nothing (1.05x) on 2 cores,
-so the runner only does it on 4 or more cores (`RENDER_CONCURRENCY` overrides). The AI steps (watching, captions, checking cuts) add their own time on top.
-If runs queue up, add machines (`fly scale count 2`) rather than parallelism on a small one.
+so the runner only does it on 4 or more cores (`RENDER_CONCURRENCY` overrides; `fly.toml` sets 3 on its 4 cores). The AI steps (watching, captions,
+checking cuts) add their own time on top. Rendering doesn't wait for the AI steps to finish: each clip starts rendering as soon as its cut is
+checked, and captions are written three batches at a time.
 
 ## 5. The web app (Render)
 

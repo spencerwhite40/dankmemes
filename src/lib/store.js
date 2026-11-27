@@ -73,15 +73,33 @@ async function createJob(pool, j) {
   return rows[0];
 }
 
-/** Atomically claim the oldest queued job (SKIP LOCKED so two runners never take the same one). */
+/**
+ * Take the next queued run (SKIP LOCKED, so two machines never take the same one). Normally every run starts at once (the scaler starts a machine for each), so order only matters
+ * when every machine is busy: then paid plans go first, and a free run that has waited PRIORITY_AGING_SECONDS (default 120)
+ * counts as paid, so free runs are never stuck behind a steady stream of paid ones.
+ */
 async function claimNextJob(pool) {
+  const aging = Math.max(0, Math.floor(Number(process.env.PRIORITY_AGING_SECONDS) || 120));
   const { rows } = await pool.query(
     `update public.meme_builder_jobs set status = 'running', stage = 'starting', started_at = coalesce(started_at, now()),
             heartbeat_at = now(), attempts = attempts + 1, error = null
-      where id = (select id from public.meme_builder_jobs where status = 'queued' order by created_at limit 1 for update skip locked)
+      where id = (select j.id from public.meme_builder_jobs j
+                    left join public.users u on u.id::text = j.owner_id
+                   where j.status = 'queued'
+                   order by case when coalesce(u.plan, 'free') <> 'free' or j.created_at < now() - make_interval(secs => $1) then 0 else 1 end, j.created_at
+                   limit 1 for update of j skip locked)
       returning *`,
+    [aging],
   );
   return rows[0] || null;
+}
+
+/** How many runs are waiting and how many are being processed right now (for the scaler). */
+async function queueCounts(pool) {
+  const { rows } = await pool.query(
+    "select count(*) filter (where status = 'queued')::int as queued, count(*) filter (where status = 'running')::int as running from public.meme_builder_jobs where status in ('queued', 'running')",
+  );
+  return { queued: (rows[0] && rows[0].queued) || 0, running: (rows[0] && rows[0].running) || 0 };
 }
 
 async function setStage(pool, id, stage, info) {
@@ -266,6 +284,6 @@ async function listLibrary(pool, { personaId, rating, q, limit = 60, offset = 0,
 
 module.exports = {
   listPersonas, getPersona, savePersona, deletePersona, ratedClips,
-  createJob, claimNextJob, setStage, patchJob, touchJob, requeueForRetry, finishJob, failJob, retryJob, requeueStale, listJobs, listVideos, findJobByIdempotencyKey, getJob,
+  createJob, claimNextJob, queueCounts, setStage, patchJob, touchJob, requeueForRetry, finishJob, failJob, retryJob, requeueStale, listJobs, listVideos, findJobByIdempotencyKey, getJob,
   clearClips, addClip, listJobClips, getClip, updateClipCaption, setRating, deleteClip, deleteJob, listLibrary,
 };

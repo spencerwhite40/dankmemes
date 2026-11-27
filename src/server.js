@@ -112,6 +112,12 @@ async function main() {
   const port = Number(process.env.PORT) || 3000;
   app.listen(port, () => console.log(`dankmemes listening on :${port}`));
   startMemeBuilderWorker(pool);
+  // Starts a Fly processing machine for each waiting run (src/lib/scaler.js); off unless FLY_API_TOKEN and FLY_WORKER_APP are set.
+  const scaler = require("./lib/scaler");
+  scaler.startScaler(pool);
+  if (process.env.NODE_ENV === "production" && (process.env.MEME_BUILDER_RUNNER || "").toLowerCase() === "off" && !scaler.configured()) {
+    console.warn("[setup] Runs are processed elsewhere but FLY_API_TOKEN / FLY_WORKER_APP are not set: keep the processing machine always on (no WORKER_IDLE_EXIT_SECONDS), or runs will wait.");
+  }
   require("./retention").startRetention(pool);
 }
 

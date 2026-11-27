@@ -11,7 +11,7 @@ Keys and secrets always go into each host's own settings page, never into git or
 | 2 | Neon: make a project and copy the **direct** connection string | `DATABASE_URL` | $0 to start |
 | 3 | Cloudflare R2: make a private bucket and an API token with read and write on it | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | about $0.015 per GB a month |
 | 4 | Google AI Studio: make an API key. Anthropic and OpenAI keys are optional and give better captions | `GOOGLE_API_KEY` (plus `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) | pay per use, with a free tier for testing |
-| 5 | Fly.io: sign up, run the three `fly` commands in `docs/deploy.md` step 4 | the processing machine | about $33 to $66 a month |
+| 5 | Fly.io: sign up, run the `fly` commands in `docs/deploy.md` step 4, put the deploy token on Render as `FLY_API_TOKEN` | the processing machines (one per run, stopped when idle) | $0.18 an hour per busy machine, about $396 a month at worst with the cap of 3 |
 | 6 | Render: New, then Blueprint, point it at this repo and paste the values above when it asks | the website | about $7 to $25 a month |
 | 7 | Point the domain at Render, then set `APP_URL=https://your-domain.com` | the live address | none |
 | 8 | Resend: add and verify your domain, then make an API key | `RESEND_API_KEY`, `EMAIL_FROM` | free tier to start |
@@ -45,3 +45,6 @@ Web app on Render, unless it says otherwise. `render.yaml` asks for every one ma
 | `COMPANY_NAME`, `COMPANY_ADDRESS`, `SUPPORT_EMAIL`, `COPYRIGHT_EMAIL`, `LEGAL_JURISDICTION`, `LEGAL_REVIEWED` | for legal pages | no |
 | `ALERT_WEBHOOK_URL` | optional | yes, if set |
 | `MEME_BUILDER_RUNNER=off`, `NODE_ENV=production` | already set in `render.yaml` | no |
+| `FLY_API_TOKEN` (a Fly deploy token for the worker app) | yes, so each run gets its own machine | no |
+| `FLY_WORKER_APP`, `WORKER_MAX_MACHINES` (the cost cap, default 3) | already set in `render.yaml` | no |
+| `WORKER_IDLE_POLL_SECONDS`, `WORKER_IDLE_EXIT_SECONDS`, `RENDER_CONCURRENCY` | already set in `fly.toml` | only there |

@@ -528,12 +528,14 @@ function syncClips(clips) {
   for (const c of clips) {
     const old = have.get(c.id);
     if (old) { old.querySelector(".cap").textContent = c.caption; old.querySelector(".up").classList.toggle("on", c.rating > 0); old.querySelector(".down").classList.toggle("on", c.rating < 0); continue; }
-    $("clips").append(clipCard(c));
+    // clips are numbered best first but can finish in any order: put each one in its place
+    const card = clipCard(c), after = [...$("clips").children].find((x) => Number(x.dataset.n) > c.n);
+    $("clips").insertBefore(card, after || null);
   }
 }
 
 function clipCard(c) {
-  const card = el("article", { className: "clip" }); card.dataset.id = c.id;
+  const card = el("article", { className: "clip" }); card.dataset.id = c.id; card.dataset.n = c.n;
   const video = el("video", { controls: true, playsInline: true, preload: "metadata", src: `${c.video_url}#t=0.8` });
   video.setAttribute("aria-label", `Clip: ${c.caption}`);
   const cap = el("p", { className: "cap", textContent: c.caption });

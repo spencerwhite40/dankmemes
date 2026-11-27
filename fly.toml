@@ -7,17 +7,32 @@
 # It does not need the Stripe, email or legal settings: only the web app sends email and talks to Stripe.
 # Full order of steps: docs/deploy.md
 # Deploy:       fly deploy
-# On the web app set MEME_BUILDER_RUNNER=off so only this machine processes jobs.
+# On the web app set MEME_BUILDER_RUNNER=off so only these machines process jobs.
+#
+# No-wait processing: keep a pool of stopped machines and let the web app start one per waiting run.
+#   fly scale count worker=3                        # the pool; match WORKER_MAX_MACHINES on the web app
+#   fly tokens create deploy -a dankmemes-worker    # put the token on the web app as FLY_API_TOKEN, with FLY_WORKER_APP=dankmemes-worker
+# A machine exits after WORKER_IDLE_EXIT_SECONDS with nothing to do, and a stopped machine costs only its disk.
+# Without FLY_API_TOKEN on the web app nothing would start them again, so then remove WORKER_IDLE_EXIT_SECONDS below.
 app = "dankmemes-worker"
 primary_region = "iad"          # pick the region closest to your database
 
 [build]
   dockerfile = "Dockerfile"
 
+[env]
+  WORKER_IDLE_POLL_SECONDS = "2"    # look for the next run every 2 s while awake
+  WORKER_IDLE_EXIT_SECONDS = "120"  # then stop after 2 minutes with nothing to do
+  RENDER_CONCURRENCY = "3"          # clips rendered at once on 4 dedicated cores
+
+[[restart]]
+  policy = "on-failure"             # a crash restarts it; an idle exit (code 0) lets it stay stopped
+  processes = ["worker"]
+
 [processes]
   worker = "npm run worker"
 
 [[vm]]
   processes = ["worker"]
-  size = "performance-2x"       # video encoding is CPU-bound; shared cores are slow for this
-  memory = "4gb"
+  size = "performance-4x"       # video encoding is CPU-bound; 4 dedicated cores, about $0.18 an hour while running
+  memory = "8gb"

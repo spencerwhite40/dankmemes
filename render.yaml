@@ -15,6 +15,12 @@ services:
         value: production
       - key: MEME_BUILDER_RUNNER
         value: "off"                     # the Fly machine does the processing, not the web app
+      - key: FLY_WORKER_APP
+        value: dankmemes-worker          # the app in fly.toml; with FLY_API_TOKEN the web app starts a machine per waiting run
+      - key: FLY_API_TOKEN
+        sync: false                      # fly tokens create deploy -a dankmemes-worker
+      - key: WORKER_MAX_MACHINES
+        value: "3"                       # the most processing machines running at once (the cost cap); match fly scale count
       - key: DATABASE_URL
         sync: false
       - key: SESSION_SECRET

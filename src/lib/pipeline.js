@@ -41,6 +41,19 @@ function renderConcurrency() {
   return os.cpus().length >= 4 ? 2 : 1;
 }
 
+/** A run-at-most-`limit`-at-once queue that tasks can join at any time (mapLimit needs the whole list up front). */
+function limiter(limit) {
+  let active = 0;
+  const waiting = [];
+  const next = () => {
+    if (active >= limit || !waiting.length) return;
+    active += 1;
+    const { fn, resolve, reject } = waiting.shift();
+    Promise.resolve().then(fn).then(resolve, reject).finally(() => { active -= 1; next(); });
+  };
+  return (fn) => new Promise((resolve, reject) => { waiting.push({ fn, resolve, reject }); next(); });
+}
+
 /** Spares to verify on top of the clips wanted: a quarter more, at least 3, at most 10. Pure. */
 function spareCount(maxClips) { return Math.max(3, Math.min(10, Math.ceil(maxClips / 4))); }
 
@@ -106,6 +119,9 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       throw new Error(`This video is ${Math.round(meta.duration / 60)} minutes long. The ${plan.label} plan allows up to ${plan.maxVideoMinutes}.`);
     }
 
+    // Find the pauses in the speech now, alongside the slow AI steps, so it is ready when clips are cut (it was a wait before rendering).
+    const silencesP = media.detectSilences(sourceFile).catch((err) => { if (log.warn) log.warn("[meme-builder] pause detection failed, using padding only:", err && err.message); return []; });
+
     // upload + analyze (cached across re-captions). An analysis saved by an older version is redone.
     let moments = job.analysis;
     if (!Array.isArray(moments) || !moments.every((m) => m && m.v >= ANALYSIS_VERSION)) {
@@ -166,13 +182,39 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
     if (!selected.picked.length) throw new Error("The AI couldn't write usable captions for this video. Try again, or try a different audience.");
     await stage("selected", { candidates: ranked.length, kept: selected.picked.length, minScore: opts.minScore, lowConfidence });
 
+    // Rendering starts the moment a clip passes its check, while the rest are still being checked (the check is network-bound,
+    // rendering is CPU-bound, so the two overlap). Renders go to local files only; a clip becomes visible once the final pick is known.
+    const concurrency = renderConcurrency();
+    const threads = Math.max(1, Math.floor(os.cpus().length / concurrency));
+    const watermark = plan && plan.watermark ? watermarkText() : null;
+    const run = limiter(concurrency);
+    const renders = new Map();          // clip -> Promise<{ out, cut, audio } | { error }>
+    let final = null;                   // the clips that made the cut, once known; a queued render of any other clip is skipped
+    let seq = 0;
+    const startRender = (c) => {
+      if (!renders.has(c)) {
+        const k = ++seq;
+        renders.set(c, run(async () => {
+          if (final && !final.has(c)) return null;
+          const cut = snapBounds(c.moment, await silencesP, meta.duration);
+          const out = path.join(workDir, `render-${k}.mp4`);
+          let audio = null;
+          await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark, threads, srcSize: meta, onAudio: (status) => { audio = status; } });
+          return { out, cut, audio };
+        }).catch((error) => ({ error })));
+      }
+      return renders.get(c);
+    };
+
     // verify: check each chosen clip against a short excerpt, and fix its exact start and end
     await stage("verify", { total: selected.picked.length, done: 0 });
     const refined = await refineMoments(selected.picked, {
       sourceFile, workDir, duration: meta.duration,
       onProgress: (done, total) => stage("verify", { total, done }),
+      onResult: (outcome) => { if (outcome && outcome.clip) startRender(outcome.clip); },
     });
     const picked = rankVerified(dropOverlaps(refined.clips)).slice(0, opts.maxClips);
+    final = new Set(picked);
 
     // render + store
     const renderInfo = {
@@ -181,43 +223,39 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       noAudio: meta.hasAudio === false,
     };
     await stage("render", { ...renderInfo, done: 0 });
-    // Snap each clip's edges to the pauses in the speech (once per video), so nothing is cut mid-word.
-    let silences = [];
-    try { silences = await media.detectSilences(sourceFile); } catch (err) { if (log.warn) log.warn("[meme-builder] pause detection failed, using padding only:", err && err.message); }
     // A re-run starts from nothing: drop the old rows now, delete their files after the new ones exist.
     const oldUris = await store.clearClips(pool, job.id);
     let saved = 0, failedClips = 0, lastRenderErr = null;
     const audioCounts = { none: 0, ok: 0, boosted: 0, trimmed: 0, rejected: 0 };
-    // On a machine with spare cores, two clips render at once (see renderConcurrency). Each finished clip is saved the moment it exists
-    // (the page shows it while the rest render); saving and progress updates happen one at a time, in the order clips finish.
-    const concurrency = renderConcurrency();
-    const threads = Math.max(1, Math.floor(os.cpus().length / concurrency));
-    const watermark = plan && plan.watermark ? watermarkText() : null;
+    // Each finished clip is saved the moment it exists (the page shows it while the rest render), numbered by rank so the best
+    // is clip 1; saving and progress updates happen one at a time, in the order clips finish.
     let finished = 0, queue = Promise.resolve();
     const inOrder = (fn) => (queue = queue.then(fn, fn));
-    await mapLimit(picked, concurrency, async (c, i) => {
-      const name = `clip-${String(i + 1).padStart(2, "0")}.mp4`;
-      const out = path.join(workDir, name);
+    await Promise.all(picked.map(async (c, i) => {
+      const n = i + 1;
+      const r = await startRender(c);
       let saveNow = null;
       try {
-        const cut = snapBounds(c.moment, silences, meta.duration);
-        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark, threads, srcSize: meta, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
-        const clipBytes = (await fs.promises.stat(out)).size;
-        const uri = await storage.putFile(out, `${job.id}/${Date.now()}-${name}`, "video/mp4");
+        if (!r || r.error) throw (r && r.error) || new Error("The clip wasn't rendered.");
+        if (r.audio) audioCounts[r.audio] = (audioCounts[r.audio] || 0) + 1;
+        const clipBytes = (await fs.promises.stat(r.out)).size;
+        const uri = await storage.putFile(r.out, `${job.id}/${Date.now()}-clip-${String(n).padStart(2, "0")}.mp4`, "video/mp4");
         // The stored times are the ones actually rendered, so a later caption edit re-renders the identical cut.
-        saveNow = async () => { saved += 1; await store.addClip(pool, job.id, persona.id, saved, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: cut.startSec, endSec: cut.endSec, storageUri: uri, bytes: clipBytes }, job.created_by); };
+        saveNow = async () => { saved += 1; await store.addClip(pool, job.id, persona.id, n, { caption: c.best, score: c.score, why: c.why, transcript: c.moment.transcript, emotion: c.moment.emotion, startSec: r.cut.startSec, endSec: r.cut.endSec, storageUri: uri, bytes: clipBytes }, job.created_by); };
       } catch (err) {
         // One bad clip must not cost the other eleven.
         failedClips += 1; lastRenderErr = err;
-        if (log.error) log.error(`[meme-builder] clip ${i + 1}/${picked.length} failed, continuing:`, err && err.message);
+        if (log.error) log.error(`[meme-builder] clip ${n}/${picked.length} failed, continuing:`, err && err.message);
       }
-      await fs.promises.rm(out, { force: true }).catch(() => {});
+      if (r && r.out) await fs.promises.rm(r.out, { force: true }).catch(() => {});
       await inOrder(async () => {
         if (saveNow) await saveNow();
         finished += 1;
         await stage("render", { ...renderInfo, done: finished, failed: failedClips, audio: { ...audioCounts } });
       });
-    });
+    }));
+    // Renders of clips that didn't make the final cut (a spare, an overlap) are thrown away.
+    await Promise.all([...renders].filter(([c]) => !final.has(c)).map(([, p]) => p.then((r) => r && r.out && fs.promises.rm(r.out, { force: true })).catch(() => {})));
     if (saved === 0) throw lastRenderErr || new Error("None of the clips could be rendered.");
     for (const u of oldUris) await storage.remove(u).catch((e) => log.warn && log.warn("[meme-builder] cleanup:", e.message));
     await store.finishJob(pool, job.id);
@@ -249,4 +287,4 @@ async function rerenderClip(pool, clip, caption, { watermark = null } = {}) {
   }
 }
 
-module.exports = { processJob, rerenderClip, renderConcurrency, spareCount, rankVerified, ensureSituationBank, DEFAULTS };
+module.exports = { processJob, rerenderClip, renderConcurrency, spareCount, rankVerified, ensureSituationBank, limiter, DEFAULTS };
