@@ -14,7 +14,7 @@ async function alert(kind, message, { windowMs = WINDOW_MS, now = Date.now() } =
   if (!url) return false;
   if (now - (lastSent.get(kind) || 0) < windowMs) return false;
   lastSent.set(kind, now);
-  const text = `[${process.env.APP_NAME || "Meme Builder"}${process.env.NODE_ENV ? ` ${process.env.NODE_ENV}` : ""}] ${kind}: ${String(message || "").slice(0, 500)}`;
+  const text = `[${process.env.APP_NAME || "dankmemes"}${process.env.NODE_ENV ? ` ${process.env.NODE_ENV}` : ""}] ${kind}: ${String(message || "").slice(0, 500)}`;
   try {
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, content: text }), signal: AbortSignal.timeout(5000) });
     return res.ok;

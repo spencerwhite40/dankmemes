@@ -55,4 +55,34 @@ services:
         sync: false
       - key: LEGAL_JURISDICTION
         sync: false
-      # The Stripe price ids (STRIPE_PRICE_*, ten of them) are added by hand in the dashboard: docs/billing.md lists them.
+      - key: LEGAL_REVIEWED
+        sync: false                      # "yes" once a lawyer has reviewed the legal pages; leave blank until then
+      - key: ALERT_WEBHOOK_URL
+        sync: false                      # optional: a Slack or Discord incoming webhook
+      # Stripe price ids, one per plan and period and one per top-up pack (docs/billing.md):
+      - key: STRIPE_PRICE_STARTER_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_STARTER_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_CREATOR_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_CREATOR_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_PRO_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_AGENCY_MONTHLY
+        sync: false
+      - key: STRIPE_PRICE_AGENCY_ANNUAL
+        sync: false
+      - key: STRIPE_PRICE_PACK_MINI
+        sync: false
+      - key: STRIPE_PRICE_PACK_SMALL
+        sync: false
+      - key: STRIPE_PRICE_PACK_MEDIUM
+        sync: false
+      - key: STRIPE_PRICE_PACK_LARGE
+        sync: false
+      - key: STRIPE_PRICE_PACK_BULK
+        sync: false

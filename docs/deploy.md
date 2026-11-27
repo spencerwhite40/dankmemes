@@ -1,6 +1,6 @@
 # First deploy: the order to do things in
 
-Nothing here is deployed yet. This is the checklist for when the accounts exist. Secrets are always typed into each host's own settings page,
+Nothing here is deployed yet. `docs/launch.md` is the short version; this is the detail for when the accounts exist. Secrets are always typed into each host's own settings page,
 never into git or chat. Do the steps in order: each one needs the one before it.
 
 | Piece | Runs | Config in the repo |
@@ -66,7 +66,7 @@ Until then nobody has to confirm their address (nobody could).
 
 ## 7. Stripe (`docs/billing.md`)
 
-Create the products and prices, the webhook at `https://YOUR-DOMAIN/billing/webhook`, and the customer portal. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and the ten `STRIPE_PRICE_*` variables on the web app. Do it all in Stripe's **test mode** first.
+Create the products and prices, the webhook at `https://YOUR-DOMAIN/billing/webhook`, and the customer portal. Set `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and the thirteen `STRIPE_PRICE_*` variables (Render asks for each one) on the web app. Do it all in Stripe's **test mode** first.
 
 ## 8. Legal (`docs/legal.md`)
 
