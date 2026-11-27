@@ -272,10 +272,10 @@
   "Spot rate below my cost per mile and the broker calls it 'the market'",
   "Check engine light the week insurance renews",
   "Me explaining to a shipper why detention isn't a 'courtesy'",
-  "'We'd love to build a relationship' = a lane at $1.60",
-  "Brokers when I say 'I'll pass' and the rate goes up $400",
+  "Broker: 'we'd love to build a relationship'",
+  "Me saying 'I'll pass' on a $1.60 load",
   "When the 'six-figure owner-operator' video doesn't mention the $90k in expenses",
-  "Broker: 'driver rate is $1.90.' Customer rate: $3.10",
+  "When the shipper lets slip what they paid the broker for my load",
   "Every trucker after the DEF derate: 'it was working this morning'",
   "My bank account after a $9,000 turbo repair"
  ],
@@ -344,6 +344,8 @@
   "Match the clip's EMOTION first, topic second. A sneer fits a smug broker; a long stare fits the CPM math coming out wrong. If the emotion doesn't fit any believable situation from our world, mark it unusable.",
   "Real numbers beat vague complaints. If a caption can carry a believable figure (a rate, a fee, a percentage), it should."
  ],
+ "overused_topics": ["the 14-hour clock and the ELD", "blind-side backing", "detention at the dock", "the lowball broker"],
+ "spice_notes": "sleeper-berth and home-time innuendo, truck-stop showers and bathrooms, and swearing at four-wheelers. Never jokes about sex workers at truck stops.",
  "situation_bank": [
   {
    "domain": "The dock, the wait and detention",

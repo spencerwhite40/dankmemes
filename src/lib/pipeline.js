@@ -25,7 +25,7 @@ const { refineMoments } = require("./refine");
 const { snapBounds, dropOverlaps, mapLimit } = require("./cuts");
 const { renderClip, watermarkText } = require("./render");
 const { uploadFile, ledger } = require("./ai");
-const { tasteFromRatings } = require("./personas");
+const { tasteFromRatings, buildSituationBank } = require("./personas");
 
 // Every captioned moment becomes a clip (best first); the score is a label, not a filter. A minimum score can be set in Options.
 const DEFAULTS = { minScore: 1, maxClips: 30, minClips: 5 };
@@ -39,6 +39,36 @@ function renderConcurrency() {
   const set = Number(process.env.RENDER_CONCURRENCY);
   if (Number.isFinite(set) && set >= 1) return Math.min(8, Math.floor(set));
   return os.cpus().length >= 4 ? 2 : 1;
+}
+
+/** Spares to verify on top of the clips wanted: a quarter more, at least 3, at most 10. Pure. */
+function spareCount(maxClips) { return Math.max(3, Math.min(10, Math.ceil(maxClips / 4))); }
+
+/**
+ * Best first after the check: clips the video model watched and graded (fit) come first, by fit, then the writer's own score breaks ties;
+ * clips it couldn't check keep the writer's order after them, because the two scores aren't on the same footing. Pure.
+ */
+function rankVerified(clips) {
+  return clips.map((c, i) => ({ c, i })).sort((a, b) => {
+    const fa = Number.isFinite(a.c.fit) ? a.c.fit : null, fb = Number.isFinite(b.c.fit) ? b.c.fit : null;
+    if ((fa == null) !== (fb == null)) return fa == null ? 1 : -1;
+    if (fa != null && fa !== fb) return fb - fa;
+    return (b.c.writerScore ?? b.c.score ?? 0) - (a.c.writerScore ?? a.c.score ?? 0) || a.i - b.i;
+  }).map((x) => x.c);
+}
+
+/** A custom audience made before situation banks existed (or whose bank failed to build) gets one now, saved for next time. Never blocks a run. */
+async function ensureSituationBank(pool, persona, ownerId, log = console, { build = buildSituationBank } = {}) {
+  if (persona.preset || (Array.isArray(persona.situation_bank) && persona.situation_bank.length)) return;
+  try {
+    const bank = await build(persona);
+    if (!bank.length) return;
+    persona.situation_bank = bank;
+    const { id, name, preset: _p, ...data } = persona;
+    await store.savePersona(pool, { id, name, data: { ...data, name }, ownerId });
+  } catch (err) {
+    if (log.warn) log.warn("[meme-builder] building the audience's situation bank failed, captioning without it:", err && err.message);
+  }
 }
 
 async function processJob(pool, job, { log = console, plan = null } = {}) {
@@ -120,6 +150,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
     await stage("captions", { moments: moments.length });
     const persona = await store.getPersona(pool, job.persona_id, job.owner_id);
     if (!persona) throw new Error(`Audience "${job.persona_id}" no longer exists.`);
+    await ensureSituationBank(pool, persona, job.owner_id, log);
     const taste = tasteFromRatings(await store.ratedClips(pool, persona.id, job.owner_id), plan ? { limit: plan.tasteExamples } : undefined);
     const captionModels = new Set();
     const captionStats = {};
@@ -129,7 +160,8 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       onChunk: (done, total) => stage("captions", { moments: moments.length, chunk: done, chunks: total }),
     });
     const opts = { ...DEFAULTS, ...(job.options || {}) };
-    const selected = selectClips(ranked, opts);
+    // The check below drops clips that don't deliver; a few spares go in with the picks so a dropped clip is replaced, not lost.
+    const selected = selectClips(ranked, { ...opts, maxClips: opts.maxClips + spareCount(opts.maxClips) });
     const { lowConfidence } = selected;
     if (!selected.picked.length) throw new Error("The AI couldn't write usable captions for this video. Try again, or try a different audience.");
     await stage("selected", { candidates: ranked.length, kept: selected.picked.length, minScore: opts.minScore, lowConfidence });
@@ -140,7 +172,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       sourceFile, workDir, duration: meta.duration,
       onProgress: (done, total) => stage("verify", { total, done }),
     });
-    const picked = dropOverlaps(refined.clips);
+    const picked = rankVerified(dropOverlaps(refined.clips)).slice(0, opts.maxClips);
 
     // render + store
     const renderInfo = {
@@ -169,7 +201,7 @@ async function processJob(pool, job, { log = console, plan = null } = {}) {
       let saveNow = null;
       try {
         const cut = snapBounds(c.moment, silences, meta.duration);
-        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark, threads, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
+        await renderClip({ source: sourceFile, startSec: cut.startSec, endSec: cut.endSec, caption: c.best, out, watermark, threads, srcSize: meta, onAudio: (status) => { audioCounts[status] = (audioCounts[status] || 0) + 1; } });
         const clipBytes = (await fs.promises.stat(out)).size;
         const uri = await storage.putFile(out, `${job.id}/${Date.now()}-${name}`, "video/mp4");
         // The stored times are the ones actually rendered, so a later caption edit re-renders the identical cut.
@@ -209,7 +241,7 @@ async function rerenderClip(pool, clip, caption, { watermark = null } = {}) {
       throw storage.isNotFound(err) ? new Error(storage.SOURCE_GONE) : err;
     }
     const out = path.join(workDir, "clip.mp4");
-    await renderClip({ source: sourceFile, startSec: Number(clip.start_sec), endSec: Number(clip.end_sec), caption, out, watermark });
+    await renderClip({ source: sourceFile, startSec: Number(clip.start_sec), endSec: Number(clip.end_sec), caption, out, watermark, srcSize: job.video_meta || undefined });
     const uri = await storage.putFile(out, `${job.id}/${Date.now()}-clip-${String(clip.n).padStart(2, "0")}.mp4`, "video/mp4");
     return uri;
   } finally {
@@ -217,4 +249,4 @@ async function rerenderClip(pool, clip, caption, { watermark = null } = {}) {
   }
 }
 
-module.exports = { processJob, rerenderClip, renderConcurrency, DEFAULTS };
+module.exports = { processJob, rerenderClip, renderConcurrency, spareCount, rankVerified, ensureSituationBank, DEFAULTS };

@@ -12,7 +12,7 @@
 //             is about or what's at stake, without giving away the payoff.
 
 const { chatJSON, textModels } = require("./ai");
-const { personaToPrompt, pickSeeds, SPICE_RULE } = require("./personas");
+const { personaToPrompt, pickSeeds, spiceRule, overusedRule } = require("./personas");
 
 // Small batches: smaller replies are far more reliable than one huge JSON answer.
 const CHUNK = 5;
@@ -32,22 +32,34 @@ function describeMoment(m) {
     ` | works as reaction to: ${m.reaction_use}`;
 }
 
+// The craft, written down. These are the rules a reaction meme lives or dies by; docs/meme-craft.md explains each one.
+// They are audience-neutral on purpose: the audience's own world comes from the persona (vocabulary, situation bank, examples).
 const STYLE_RULES =
-  `HOW THESE MEMES WORK: the caption is a situation from OUR lives and the clip is the reaction. The clip is about something else entirely; ` +
+  `HOW THESE MEMES WORK: the caption is the SETUP, a situation from OUR lives; the clip is the PUNCHLINE, the reaction. The clip is about something else entirely: ` +
   `what has to match is the FEELING and the social dynamic (condescension, a dodge, getting caught, losing patience, quiet defeat...), not the topic.\n` +
   `- Start from the clip's FEELING and dynamic. Ask: what recurring situation in our world produces exactly this feeling?\n` +
-  `- Cast the speaker as someone in our world (the broker talking down to us, the dispatcher dodging, us finally snapping). ` +
-  `Choose the role the tone really fits: a condescending voice is the broker, an exasperated one is us.\n` +
-  `- Be SPECIFIC: one insider detail (a number, a term, a time, a place) makes people say "that's us". Generic captions get nothing.\n` +
-  `  Format reference: "When the broker offers 20% under spot rate" + a clip of someone saying "woah woah buddy, you have no idea what you're talking about".\n` +
+  `- Cast the person in the clip as someone in our world: us, or someone we deal with all the time (look at the people in our stories). ` +
+  `Choose the role the tone really fits: a condescending voice is the person who talks down to us, an exasperated one is us.\n` +
+  `- RELATABLE: it has to happen to most of us, often. A shared, recurring pain beats a clever one-off story every time.\n` +
+  `- SPECIFIC: one insider detail (a number, a term, a time, a place) makes people say "that's literally me". One detail, not three. Generic captions get nothing.\n` +
+  `  Format reference (a different audience, to show the shape only): "When the landlord says the rent is only going up a little" + a clip of someone saying "woah woah buddy, you have no idea what you're talking about".\n` +
+  `- INSTANT: the link between caption and clip must click within two seconds of the clip playing. If it takes a sentence to explain why they fit, it does not fit: mark it unusable.\n` +
+  `- Never put the punchline in the caption, never describe what the clip shows, and never explain the joke (no "because...", no moral, no "lol"). Deadpan beats exclamation marks.\n` +
   `- A BIT caption is a HOOK for a longer take: say what it is about or what's at stake (a question, a "POV:", a confession), ` +
   `without giving away the payoff. The viewer should want to watch to the end.\n` +
   `- The spoken words must not fight the caption. If the words are about their own topic and clash with any situation of ours, mark it unusable, ` +
   `unless the caption can use those very words as a line said in our world.\n` +
   `- Do not force a match. If no situation of ours really produces this feeling, mark it unusable.\n` +
-  `- Short: under 100 characters, readable in two seconds. No hashtags, no emojis unless truly natural. Don't explain the joke.\n` +
-  `- Never copy the example captions: they show voice and format only. Vary the caption format across the batch (not every caption starts with "When").\n` +
+  `- Short: ideally under 12 words, never over 100 characters, readable in two seconds. No hashtags, no emojis unless truly natural.\n` +
+  `- Never copy the example captions: they show voice and format only. Vary the caption format across the batch ("When...", "POV:", "Me when...", ` +
+  `a role and their exact line, numbers first, "The way..."): not every caption starts with "When".\n` +
   `- Use our vocabulary naturally; avoid anything on the NEVER SAY list.\n`;
+
+// How the writer grades its own pick. 7+ needs all four checks to pass, so the score means the same thing for every audience.
+const SCORE_RULE =
+  `Then pick the single best caption per clip and score how funny it'd be to our audience 1-10. Score HARSHLY and use the whole range. ` +
+  `A 7 or more needs ALL FOUR: relatable (happens to most of us), specific (one real insider detail), instant (clicks in two seconds), and the clip itself is the punchline. ` +
+  `7 means you'd genuinely send it to the group chat, 9-10 is rare. Most clips should land 4-6. A mediocre-but-usable pairing is a 5, not a 7.`;
 
 /**
  * Captions all moments CHUNK at a time, then ranks the lot.
@@ -97,10 +109,9 @@ async function writeChunk(persona, moments, { taste, candidates, chat = chatJSON
   const task =
     `Below are clips from a video. For EACH one, write ${candidates} candidate captions for OUR audience.\n\n` +
     `Rules:\n${STYLE_RULES}` +
-    `- ${SPICE_RULE}\n` +
-    `- The most overused topics are the 14-hour clock/ELD, blind-side backing, detention and the lowball broker. Skip them unless the clip's feeling demands exactly that and nothing above already used it.\n` +
-    `- Then pick the single best caption per clip and score how funny it'd be to our audience 1-10. Score HARSHLY and use the whole range: ` +
-    `most clips should land 4-6, 7 means you'd genuinely send it to a friend in the group chat, 9-10 is rare. A mediocre-but-usable pairing is a 5, not a 7.\n\n` +
+    `- ${spiceRule(persona)}\n` +
+    (overusedRule(persona) ? `- ${overusedRule(persona)}\n` : "") +
+    `- ${SCORE_RULE}\n\n` +
     usedPart +
     `CLIPS:\n${clipLines.join("\n")}\n\n` +
     `Reply with ONLY a JSON array, one item per clip: ` +
@@ -158,7 +169,8 @@ async function regenerateCaption(persona, moment, { taste = "", avoid = [], chat
   const tried = avoid.filter(Boolean).map((c) => `- ${c}`).join("\n");
   const [seeds] = pickSeeds(persona, 1);
   const task =
-    `Write ONE new caption for this clip, for OUR audience.\n\nRules:\n${STYLE_RULES}\n- ${SPICE_RULE}\n` +
+    `Write ONE new caption for this clip, for OUR audience.\n\nRules:\n${STYLE_RULES}- ${spiceRule(persona)}\n` +
+    (overusedRule(persona) ? `- ${overusedRule(persona)}\n` : "") + "\n" +
     `CLIP:\n${describeMoment(moment)}\n` +
     (seeds.length ? `Starting points from our world (ideas only): ${seeds.join("  |  ")}\n` : "") + "\n" +
     (tried ? `Captions already tried (take a clearly DIFFERENT angle, do not reword these):\n${tried}\n\n` : "") +
@@ -200,4 +212,4 @@ function selectClips(ranked, { minScore = 1, maxClips = 30, minClips = 5 } = {})
   return { picked, lowConfidence };
 }
 
-module.exports = { parseCaptionReply, writeCaptions, regenerateCaption, selectClips, cleanCaption, describeMoment, CHUNK };
+module.exports = { STYLE_RULES, SCORE_RULE, parseCaptionReply, writeCaptions, regenerateCaption, selectClips, cleanCaption, describeMoment, CHUNK };

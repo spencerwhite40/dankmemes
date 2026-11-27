@@ -41,8 +41,9 @@ function buildVerifyPrompt(moment, windowSec, candidates = []) {
     (moment.context ? `- context: ${moment.context}\n` : "") +
     `\n1. Is that moment actually in this excerpt? The wording can differ slightly, but it must be the same moment.\n` +
     `2. If it is, say where it should be cut, in SECONDS FROM THE START OF THIS EXCERPT (decimals are fine). ` +
-    `Begin where the setup or thought begins (for a quick reaction, just before the speaker starts) and end just after it lands, ` +
-    `including the laugh or the reaction beat. Never start or end in the middle of a word or a sentence. Include the whole punchline.\n` +
+    `Begin where the setup or thought begins (for a quick reaction, about a second before the speaker starts: the viewer is still reading the caption) and end just after it lands, ` +
+    `including the laugh or the reaction beat, then stop: no dead air, no next topic. Cut a quick reaction TIGHT (usually 4 to 12 seconds in all). ` +
+    `Never start or end in the middle of a word or a sentence. Include the whole punchline.\n` +
     captionPart +
     `\nReply with ONLY JSON: {"found": true or false, "start": seconds, "end": seconds${caps.length ? ', "pick": "A" | "B" | "C" | "none", "fit": 1-10' : ""}}`
   );
@@ -105,7 +106,7 @@ async function refineMoments(picked, { sourceFile, workDir, duration, onProgress
         if (noFit) outcome = { clip: null, verified: true, reason: "nofit" };
         else {
           if (cands.length && verdict.pick != null && verdict.pick >= 0 && cands[verdict.pick]) refined.best = cands[verdict.pick];
-          if (verdict.fit != null) refined.score = verdict.fit;
+          if (verdict.fit != null) { refined.writerScore = c.score; refined.score = verdict.fit; }
           refined.fit = verdict.fit;
           outcome = { clip: refined, verified: true };
         }

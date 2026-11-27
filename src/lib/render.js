@@ -1,7 +1,13 @@
 "use strict";
 
 // Meme Builder step 3: cut the original video, lay it out vertically (9:16)
-// over a blurred copy of itself, and burn the caption in at the top.
+// and burn the caption in.
+//
+// The layout is the one people recognise as a meme: a white caption card with
+// black bold text sitting directly on top of the video, the two together a
+// little above the middle of the frame (clear of the app's buttons at the
+// bottom), over a darkened blur of the same video. A tall (phone) video fills
+// the frame instead, with the caption on white boxes near the top.
 //
 // The caption is burned in with libass (an .ass subtitle file) because the
 // ffmpeg-static binary has no drawtext filter. The font is the Liberation
@@ -10,13 +16,13 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { run, runFfmpeg, ffmpegBin } = require("./media");
+const { run, runFfmpeg, ffmpegBin, probe } = require("./media");
 
 const FONT_DIR = path.join(__dirname, "..", "..", "assets", "fonts");
 const FONT_FILE = path.join(FONT_DIR, "LiberationSans-Bold.ttf");
 
 /** Greedy word-wrap to a max number of characters per line. */
-function wrapCaption(text, maxChars = 24) {
+function greedyWrap(text, maxChars) {
   const lines = [];
   let line = "";
   for (const w of String(text).trim().split(/\s+/)) {
@@ -24,12 +30,28 @@ function wrapCaption(text, maxChars = 24) {
     else line = line ? `${line} ${w}` : w;
   }
   if (line) lines.push(line);
-  return lines.join("\n");
+  return lines;
+}
+
+/**
+ * Word-wrap to at most maxChars per line, balanced: the same number of lines the plain wrap needs, but as even as possible,
+ * so a caption never ends on one orphaned word ("...and it is hour" / "six"). Pure.
+ */
+function wrapCaption(text, maxChars = 24) {
+  const lines = greedyWrap(text, maxChars);
+  if (lines.length < 2) return lines.join("\n");
+  let best = lines;
+  for (let m = maxChars - 1; m >= 8; m--) {
+    const tryLines = greedyWrap(text, m);
+    if (tryLines.length > lines.length) break;
+    best = tryLines;
+  }
+  return best.join("\n");
 }
 
 /** ASS text field: wrapped, with override-block and escape characters neutralised. */
-function assText(caption) {
-  return wrapCaption(caption)
+function assText(caption, maxChars = 24) {
+  return wrapCaption(caption, maxChars)
     .replace(/[{}]/g, (c) => (c === "{" ? "(" : ")"))
     .replace(/\\/g, "")
     .replace(/\n/g, "\\N");
@@ -59,20 +81,53 @@ function watermarkLines(seconds, text) {
   return lines;
 }
 
-/** Whole .ass file for one caption shown for `seconds` seconds (PlayRes matches the 1080x1920 output). watermark: the mark's words, or falsy for none. */
-function buildAss(caption, seconds, watermark) {
+// ── Layout, in 1080x1920 units (scaled for a 720x1280 output) ─────────────
+const TOP_SAFE = 150;        // the app's own header covers the very top
+const TALL_SHARE = 0.6;      // a video taller than this share of the frame is treated as a phone video: it fills, the caption overlays
+const CARD_PAD = 40;
+const CARD_SIZES = [[76, 21], [66, 24], [58, 28], [50, 32]];   // [font px, characters per line], biggest that fits in 4 lines wins
+const even = (n) => 2 * Math.round(n / 2);
+
+/**
+ * Where everything goes for one caption on one source size. Pure.
+ * card:    { mode, fontSize, wrap, lines, cardY, cardH, videoY, videoH }  (landscape and square sources)
+ * overlay: { mode, fontSize, wrap, lines, marginV }                        (phone videos)
+ */
+function captionLayout({ srcW, srcH, caption = "" } = {}) {
+  const ratio = srcW > 0 && srcH > 0 ? srcH / srcW : 9 / 16;
+  const videoH = even(1080 * ratio);
+  const fitFor = (wrapAt) => wrapCaption(caption, wrapAt).split("\n").length;
+  // Big text first: the two biggest sizes at up to 3 lines, then the biggest at up to 4 lines, then the smallest size.
+  const [fontSize, wrap] = CARD_SIZES.slice(0, 2).find(([, w]) => fitFor(w) <= 3) || CARD_SIZES.find(([, w]) => fitFor(w) <= 4) || CARD_SIZES[CARD_SIZES.length - 1];
+  const lines = fitFor(wrap);
+  if (videoH > 1920 * TALL_SHARE) return { mode: "overlay", fontSize: Math.min(fontSize, 64), wrap: Math.max(wrap, 24), lines: fitFor(Math.max(wrap, 24)), marginV: 230 };
+  const cardH = even(lines * fontSize * 1.18 + CARD_PAD * 2);
+  const group = cardH + videoH;
+  // A little above the middle: the bottom of the screen is covered by the app's caption, buttons and progress bar.
+  const cardY = even(Math.max(TOP_SAFE, Math.min(1920 - group, (1920 - group) / 2 - 110)));
+  return { mode: "card", fontSize, wrap, lines, cardY, cardH, videoY: cardY + cardH, videoH };
+}
+
+/** Whole .ass file for one caption shown for `seconds` seconds (PlayRes matches the 1080x1920 output). watermark: the mark's words, or falsy for none. layout: from captionLayout. */
+function buildAss(caption, seconds, watermark, layout = captionLayout({ srcW: 1920, srcH: 1080, caption })) {
   const t = Math.max(1, Math.ceil(seconds));
   const mm = String(Math.floor(t / 60)).padStart(2, "0");
   const ss = String(t % 60).padStart(2, "0");
+  const card = layout.mode === "card";
+  // Card: black text, no outline, centred in the white card. Overlay: black text on white boxes (BorderStyle 3 draws the box in the outline colour).
+  const capStyle = card
+    ? `Style: Cap,Liberation Sans,${layout.fontSize},&H00101010,&H00101010,&H00FFFFFF,&H00000000,-1,0,0,0,100,100,0,0,1,0,0,5,50,50,0,1`
+    : `Style: Cap,Liberation Sans,${layout.fontSize},&H00101010,&H00101010,&H00FFFFFF,&H00000000,-1,0,0,0,100,100,0,0,3,14,0,8,70,70,${layout.marginV},1`;
+  const pos = card ? `{\\an5\\pos(540,${layout.cardY + layout.cardH / 2})}` : "";
   return [
-    "[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920", "WrapStyle: 2", "",
+    "[Script Info]", "ScriptType: v4.00+", "PlayResX: 1080", "PlayResY: 1920", "WrapStyle: 0", "",
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Cap,Liberation Sans,64,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,6,0,8,60,60,170,1",
+    capStyle,
     "Style: Mark,Liberation Sans,50,&H33FFFFFF,&H33FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,4,0,5,0,0,0,1", "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
-    `Dialogue: 0,0:00:00.00,0:${mm}:${ss}.00,Cap,,0,0,0,,${assText(caption)}`,
+    `Dialogue: 0,0:00:00.00,0:${mm}:${ss}.00,Cap,,0,0,0,,${pos}${assText(caption, layout.wrap)}`,
     ...(watermark ? watermarkLines(seconds, assText(watermark).replace(/\\N/g, " ")) : []), "",
   ].join("\n");
 }
@@ -182,21 +237,36 @@ function audioStatus(plan) {
 function outputSize(durSec) { return durSec > LONG_CLIP_SEC ? { w: 720, h: 1280 } : { w: 1080, h: 1920 }; }
 const LONG_CLIP_SEC = 45;
 
-async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size, watermark, threads }) {
+/** The ffmpeg filter graph for one layout at output size w x h. Pure. */
+function layoutFilter(layout, w, h, assFile) {
+  const k = w / 1080;
+  const px = (n) => even(n * k);
+  // The background is blurred anyway, so blur a tiny copy and scale it back up: ~2.4x faster than
+  // blurring the full 1080x1920 frame, which matters on a small server, and it looks the same. It is darkened so the card and video stand out.
+  const bg = `[bg]scale=${w / 10}:${h / 10}:force_original_aspect_ratio=increase,crop=${w / 10}:${h / 10},boxblur=3:1,eq=brightness=-0.18:saturation=0.75,scale=${w}:${h}:flags=bilinear[bgb];`;
+  const caption = `ass='${esc(assFile)}':fontsdir='${esc(FONT_DIR)}',setsar=1[v]`;
+  if (layout.mode === "card") {
+    return "[0:v]split=2[bg][fg];" + bg +
+      `[fg]scale=${w}:${px(layout.videoH)}:flags=fast_bilinear,setsar=1[fgs];` +
+      `[bgb][fgs]overlay=0:${px(layout.videoY)}[base];` +
+      `[base]drawbox=x=0:y=${px(layout.cardY)}:w=${w}:h=${px(layout.cardH)}:color=white@1:t=fill,${caption}`;
+  }
+  return "[0:v]split=2[bg][fg];" + bg +
+    `[fg]scale=${w}:${h}:force_original_aspect_ratio=decrease:flags=fast_bilinear,setsar=1[fgs];` +
+    "[bgb][fgs]overlay=(W-w)/2:(H-h)/2[base];" + `[base]${caption}`;
+}
+
+/** srcSize: { width, height } of the source (upright). Probed when not given. */
+async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.05, onAudio, size, watermark, threads, srcSize }) {
   const start = Math.max(0, startSec - padSec);
   const dur = endSec + padSec - start;
   const { w, h } = size || outputSize(dur);
+  const dims = srcSize && srcSize.width && srcSize.height ? srcSize : await probe(source).catch(() => ({}));
+  const layout = captionLayout({ srcW: dims.width, srcH: dims.height, caption });
   const assFile = out.replace(/\.mp4$/, ".caption.ass");
-  await fs.promises.writeFile(assFile, buildAss(caption, dur, watermark));
+  await fs.promises.writeFile(assFile, buildAss(caption, dur, watermark, layout));
   try {
-    const vf =
-      "[0:v]split=2[bg][fg];" +
-      // The background is blurred anyway, so blur a tiny copy and scale it back up: ~2.4x faster than
-      // blurring the full 1080x1920 frame, which matters on a small server, and it looks the same.
-      `[bg]scale=${w / 10}:${h / 10}:force_original_aspect_ratio=increase,crop=${w / 10}:${h / 10},boxblur=3:1,scale=${w}:${h}:flags=bilinear[bgb];` +
-      `[fg]scale=${w}:-2:flags=fast_bilinear[fgs];` +
-      "[bgb][fgs]overlay=(W-w)/2:(H-h)/2[base];" +
-      `[base]ass='${esc(assFile)}':fontsdir='${esc(FONT_DIR)}',setsar=1[v]`;
+    const vf = layoutFilter(layout, w, h, assFile);
     const audio = await audioFilter(source, start, dur);
     if (onAudio) { try { onAudio(audioStatus(audio), audio); } catch { /* informational */ } }
     await runFfmpeg([
@@ -214,4 +284,4 @@ async function renderClip({ source, startSec, endSec, caption, out, padSec = 0.0
   return out;
 }
 
-module.exports = { outputSize, audioStatus, encodePreset, renderClip, wrapCaption, assText, buildAss, watermarkText, watermarkLines, FONT_FILE, parseLoudnorm, audioNeeds, chooseGain, audioLooksOk, audioWindows, audioFilter, measureLoudness };
+module.exports = { captionLayout, layoutFilter, outputSize, audioStatus, encodePreset, renderClip, wrapCaption, assText, buildAss, watermarkText, watermarkLines, FONT_FILE, parseLoudnorm, audioNeeds, chooseGain, audioLooksOk, audioWindows, audioFilter, measureLoudness };
