@@ -202,8 +202,8 @@ describe("rendering helpers", () => {
   test("buildAss produces a styled one-event subtitle file for the clip length", () => {
     const ass = buildAss("Hello world", 7.2);
     assert.match(ass, /PlayResX: 1080/);
-    assert.match(ass, /Style: Cap,Liberation Sans,64/);
-    assert.match(ass, /Dialogue: 0,0:00:00\.00,0:00:08\.00,Cap,,0,0,0,,Hello world/);
+    assert.match(ass, /Style: Cap,Liberation Sans,76,&H00101010/, "black text on the white card");
+    assert.match(ass, /Dialogue: 0,0:00:00\.00,0:00:08\.00,Cap,,0,0,0,,\{\\an5\\pos\(540,\d+\)\}Hello world/);
   });
 });
 
@@ -457,7 +457,7 @@ describe("hardening: one failure must not sink a run", () => {
     assert.match(prompt, /\[m1\] BIT, about 42s/); assert.match(prompt, /context: ranting about detention/);
     assert.match(prompt, /\[m2\] REACTION, about 4s/);
     assert.match(prompt, /A BIT caption is a HOOK/);
-    assert.match(prompt, /Start from the clip's FEELING/); assert.match(prompt, /Cast the speaker as someone in our world/);
+    assert.match(prompt, /Start from the clip's FEELING/); assert.match(prompt, /Cast the person in the clip as someone in our world/);
     assert.match(prompt, /must not fight the caption/);
     assert.match(system, /REAL FEEDBACK/, "taste feedback still reaches the writer");
   });
@@ -519,7 +519,7 @@ describe("hardening: one failure must not sink a run", () => {
     assert.match(prompts[0], /BASE YOUR CAPTIONS ON ONE of these situations from our world/); assert.match(prompts[0], /Most should be clean/); assert.match(prompts[0], /sprinkle that in/);
     assert.doesNotMatch(prompts[0], /Already used in this video/, "nothing used yet in the first batch");
     assert.match(prompts[1], /Already used in this video/); assert.match(prompts[1], /caption for m1 1/, "the first batch's captions are passed on");
-    assert.match(prompts[1], /14-hour clock\/ELD/, "the overused topics are named");
+    assert.match(prompts[1], /14-hour clock and the ELD/, "the audience's own overused topics are named");
     assert.match(prompts[0], /never explicit/, "the hard limits stay");
   });
   test("regenerateCaption asks for a different angle and cleans the answer", async () => {

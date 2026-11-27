@@ -45,10 +45,14 @@ async function runFfmpeg(args) {
 function parseProbe(text) {
   const d = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(text);
   const v = /Stream #[^\n]*Video:[^\n]*?,\s*(\d{2,5})x(\d{2,5})/.exec(text);
+  // Phone videos are often stored sideways with a rotation flag; ffmpeg turns them upright when decoding, so report the upright size.
+  const rot = /rotation of (-?[\d.]+) degrees/.exec(text) || /\brotate\s*:\s*(-?\d+)/.exec(text);
+  const sideways = rot && Math.abs(Math.round(Number(rot[1]))) % 180 === 90;
+  const [cw, ch] = v ? [Number(v[1]), Number(v[2])] : [null, null];
   return {
     duration: d ? Number(d[1]) * 3600 + Number(d[2]) * 60 + Number(d[3]) : null,
-    width: v ? Number(v[1]) : null,
-    height: v ? Number(v[2]) : null,
+    width: sideways ? ch : cw,
+    height: sideways ? cw : ch,
     hasAudio: /Stream #[^\n]*Audio:/.test(text),
     hasVideo: !!v,
   };

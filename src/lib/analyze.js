@@ -66,7 +66,7 @@ function buildPrompt(duration) {
   return (
     `You are scouting REACTION CLIPS for short-form video memes. Watch this video carefully (picture AND audio). ` +
     `It is ${duration ? `${Math.round(duration)} seconds long` : "long-form content"}.\n\n` +
-    `HOW THESE MEMES WORK: a caption describes a situation from someone's life ("When the broker offers 20% under spot"), ` +
+    `HOW THESE MEMES WORK: a caption describes a situation from someone's life ("When the landlord says the rent is only going up a little"), ` +
     `and the clip is the reaction that perfectly fits that feeling, even though the clip is about something completely different. ` +
     `So the topic of the clip does not matter. What matters is the FEELING and the social dynamic (someone being condescending, ` +
     `dodging a question, getting caught, losing patience, being smug, quietly giving up) and how clearly it comes across.\n\n` +
