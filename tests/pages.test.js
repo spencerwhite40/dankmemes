@@ -26,6 +26,26 @@ describe("the public pages: landing, studio and prices (real database)", { skip:
     assert.match(html, /<title>[^<]*dankmemes/i); assert.match(html, /\/landing\.js/);
     assert.match(html, /verify\|reset\|billing/, "the redirect for /?verify=, /?reset= and /?billing= is there");
   });
+  test("the landing page's share preview uses absolute links, and every page gets the security headers", async () => {
+    const r = await fetch(`${base}/`); const html = await r.text();
+    assert.match(html, new RegExp(`og:image" content="${base}/og\\.png"`));
+    assert.match(html, new RegExp(`rel="canonical" href="${base}/"`));
+    assert.equal(r.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(r.headers.get("x-frame-options"), "SAMEORIGIN");
+    process.env.APP_URL = "https://dank.example";
+    try { assert.match(await (await fetch(`${base}/`)).text(), /og:image" content="https:\/\/dank\.example\/og\.png"/); }
+    finally { delete process.env.APP_URL; }
+  });
+  test("robots.txt keeps crawlers out of the studio and the API", async () => {
+    const r = await fetch(`${base}/robots.txt`); assert.equal(r.status, 200);
+    const t = await r.text(); assert.match(t, /Disallow: \/app/); assert.match(t, /Disallow: \/api\//);
+  });
+  test("an unknown page is a branded 404, an unknown API address is not", async () => {
+    const page = await fetch(`${base}/nope`, { headers: { accept: "text/html" } });
+    assert.equal(page.status, 404); assert.match(await page.text(), /nothing here/);
+    const api = await fetch(`${base}/api/nope`, { headers: { accept: "text/html" } });
+    assert.equal(api.status, 404); assert.doesNotMatch(await api.text(), /nothing here/);
+  });
   test("/app is the studio page", async () => {
     const r = await fetch(`${base}/app`); assert.equal(r.status, 200); const html = await r.text();
     assert.match(html, /id="maker"/); assert.match(html, /\/app\.js/);

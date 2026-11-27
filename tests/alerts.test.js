@@ -24,7 +24,7 @@ describe("alerts (no database)", () => {
     try {
       assert.equal(await alerts.alert("out_of_credit:google", "google is out of credit"), true);
       assert.equal(posts.length, 1); assert.equal(posts[0].text, posts[0].content);
-      assert.match(posts[0].text, /out_of_credit:google: google is out of credit/); assert.match(posts[0].text, /^\[Meme Builder/);
+      assert.match(posts[0].text, /out_of_credit:google: google is out of credit/); assert.match(posts[0].text, /^\[dankmemes/);
     } finally { done(); }
   });
   test("the same kind is sent once per window, a different kind is not held back, and long messages are cut", async () => {

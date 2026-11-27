@@ -11,5 +11,5 @@ const { startMemeBuilderWorker } = require("./worker");
   require("./lib/ai").ledger.setPool(pool);
   startMemeBuilderWorker(pool);
   require("./retention").startRetention(pool);
-  console.log("Meme Builder runner started (no web server)");
+  console.log("dankmemes runner started (no web server)");
 })().catch((e) => { console.error(e); process.exit(1); });
