@@ -76,9 +76,11 @@ function parseVerdict(raw, windowSec) {
  * Each clip is cut to a short excerpt and the video model, which actually watches and hears it, (1) confirms the moment is there,
  * (2) fixes the exact start and end, and (3) says which caption candidate the clip delivers best, and how well.
  * A clip no caption fits is dropped. The pick and the fit replace the writer's own choice and score: the grade comes from the one that saw the clip.
+ * onResult(outcome, i) is called the moment each clip's check finishes; outcome.clip is the clip to keep (null if dropped).
+ * Each check is one network round trip, so several run at once (concurrency).
  * Returns { clips, dropped, unverified, nofit }.
  */
-async function refineMoments(picked, { sourceFile, workDir, duration, onProgress, concurrency = 3, makeExcerpt = media.makeExcerpt, upload = ai.uploadFile, chat = ai.chatJSON } = {}) {
+async function refineMoments(picked, { sourceFile, workDir, duration, onProgress, onResult, concurrency = 6, makeExcerpt = media.makeExcerpt, upload = ai.uploadFile, chat = ai.chatJSON } = {}) {
   let done = 0;
   const results = await mapLimit(picked, concurrency, async (c, i) => {
     const m = c.moment;
@@ -118,6 +120,8 @@ async function refineMoments(picked, { sourceFile, workDir, duration, onProgress
       require("node:fs").promises.rm(file, { force: true }).catch(() => {});
     }
     done += 1;
+    // A clip that passed can start rendering now, while the others are still being checked.
+    if (onResult) { try { onResult(outcome, i); } catch { /* the caller's business */ } }
     if (onProgress) { try { await onProgress(done, picked.length); } catch { /* progress is best effort */ } }
     return outcome;
   });

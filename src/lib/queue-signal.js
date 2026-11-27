@@ -5,18 +5,20 @@
 // (slowly) so jobs queued by another instance, or left over after a restart,
 // get picked up.
 
-let handler = null;
+// Listeners: the in-process runner, and the scaler that starts worker machines (src/lib/scaler.js).
+const handlers = new Set();
 
-/** The runner registers itself here. Returns an unsubscribe function. */
+/** Register a listener. Returns an unsubscribe function. */
 function onJobQueued(fn) {
-  handler = fn;
-  return () => { if (handler === fn) handler = null; };
+  handlers.add(fn);
+  return () => { handlers.delete(fn); };
 }
 
 /** Called by the routes after a job is queued. Never throws. */
 function notifyJobQueued() {
-  if (!handler) return;
-  try { setImmediate(() => { Promise.resolve(handler()).catch(() => {}); }); } catch { /* best effort */ }
+  for (const fn of handlers) {
+    try { setImmediate(() => { Promise.resolve(fn()).catch(() => {}); }); } catch { /* best effort */ }
+  }
 }
 
 module.exports = { onJobQueued, notifyJobQueued };
