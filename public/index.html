@@ -2,149 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Meme Builder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>dankmemes · turn any video into dank memes</title>
+  <meta name="description" content="Drop in a video. dankmemes watches it, finds the reaction-worthy moments, writes captions in your audience's voice and hands back vertical clips with the caption burned in. Five free minutes a month.">
+  <meta name="theme-color" content="#050506">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="dankmemes · turn any video into dank memes">
+  <meta property="og:description" content="Feed it a video. Get captioned, vertical reaction memes back. No editing.">
+  <meta property="og:image" content="/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/anton-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/rubik-wet-paint-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/styles.css">
+  <script>
+    // Links from our emails and from Stripe land on /?verify=, /?reset= or /?billing=: those belong to the studio.
+    (function () { var q = location.search; if (/[?&](verify|reset|billing)=/.test(q)) location.replace("/app" + q); })();
+  </script>
 </head>
 <body>
-  <header class="top">
-    <h1>Meme Builder</h1>
-    <div class="who"><span id="whoami" class="muted"></span><button id="logout" class="link" hidden>Sign out</button></div>
+  <a class="skip" href="#top">Skip to content</a>
+  <header class="bar">
+    <div class="wrap">
+      <a class="logo" href="/" aria-label="dankmemes home"><span class="d">dank</span><span class="m">memes</span></a>
+      <nav aria-label="Main">
+        <a class="nl opt" href="#how">How it works</a>
+        <a class="nl opt" href="#pricing">Pricing</a>
+        <a class="nl" href="/app" data-signin>Sign in</a>
+        <a class="btn" href="/app?signup=1" data-cta>Make memes</a>
+      </nav>
+    </div>
   </header>
 
-  <main>
-    <p id="notice" class="note" role="status" hidden></p>
-
-    <!-- Choose a new password (arrived from the reset email) -->
-    <section id="reset-card" class="card" hidden>
-      <h2>Choose a new password</h2>
-      <form id="reset-form">
-        <input id="new-password" type="password" placeholder="New password (at least 10 characters)" autocomplete="new-password" minlength="10" required>
-        <button type="submit">Change password</button>
-      </form>
-      <p id="reset-error" class="error" role="alert"></p>
-    </section>
-
-    <!-- Sign in / create account -->
-    <section id="login" class="card" hidden>
-      <div class="tabs" role="tablist">
-        <button type="button" id="tab-in" class="tab on" role="tab">Sign in</button>
-        <button type="button" id="tab-up" class="tab" role="tab">Create account</button>
-      </div>
-      <form id="login-form">
-        <input id="name" placeholder="Your name (optional)" autocomplete="name" hidden>
-        <input id="email" type="email" placeholder="Email" autocomplete="email" required>
-        <input id="password" type="password" placeholder="Password" autocomplete="current-password" minlength="10" required>
-        <p id="pw-hint" class="muted" hidden>At least 10 characters.</p>
-        <label id="terms-row" class="check" hidden><input type="checkbox" id="terms"> <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
-        <button id="auth-submit" type="submit">Sign in</button>
-      </form>
-      <button type="button" id="forgot-link" class="link">Forgot your password?</button>
-      <form id="forgot-form" hidden>
-        <p class="muted">Enter your email and we'll send you a link to choose a new password.</p>
-        <input id="forgot-email" type="email" placeholder="Email" autocomplete="email" required>
-        <button type="submit">Send reset link</button>
-        <button type="button" id="forgot-back" class="link">Back to sign in</button>
-      </form>
-      <p id="login-error" class="error" role="alert"></p>
-    </section>
-
-    <!-- The whole flow -->
-    <div id="app" hidden>
-      <section class="card" id="verify-banner" hidden>
-        <p id="verify-text"></p>
-        <div class="row"><button type="button" id="verify-resend" class="small">Send the email again</button><span id="verify-msg" class="muted"></span></div>
-      </section>
-
-      <section class="card" id="locked-card" hidden>
-        <h2>Your subscription has ended</h2>
-        <p id="locked-text"></p>
-        <p class="muted">Nothing has been deleted. Subscribe again and your videos, clips and top-up minutes are back exactly as you left them.</p>
-      </section>
-
-      <section class="card" id="plan-card">
-        <h2>Your plan: <span id="plan-name"></span></h2>
-        <div id="meters" class="meters"></div>
-        <p id="plan-note" class="muted"></p>
-      </section>
-
-      <section class="card" id="pricing-card" hidden>
-        <h2>Plans</h2>
-        <div class="tabs" role="tablist">
-          <button type="button" id="per-monthly" class="tab on" role="tab">Monthly</button>
-          <button type="button" id="per-annual" class="tab" role="tab">Annual</button>
-        </div>
-        <div id="plans" class="plans"></div>
-        <p class="muted">Minutes are the length of the videos you submit, counted per month. Unused minutes don't roll over.</p>
-        <div id="packs-wrap">
-          <h3>Need more minutes this month?</h3>
-          <div id="packs" class="plans"></div>
-          <p class="muted">Top-up packs are for subscribers. Their minutes are used after your monthly minutes and never expire.</p>
-        </div>
-        <p id="billing-note" class="muted"></p>
-        <div id="cancel-panel" class="note" hidden>
-          <p id="cancel-text"></p>
-          <div class="row">
-            <button type="button" id="cancel-stay" hidden></button>
-            <button type="button" id="cancel-go" class="small"></button>
-            <button type="button" id="cancel-keep" class="small">Keep my plan</button>
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div>
+          <p class="kicker">AI reaction-meme factory</p>
+          <h1><span class="small">Turn any video into</span>a pile of <span class="tag">dank memes</span></h1>
+          <p class="lede">Drop in a podcast, a stream, an interview, anything with people reacting. A robot with <strong>zero chill</strong> watches the whole thing, finds the moments worth stealing, writes captions your crowd will actually laugh at, and hands back vertical clips with the caption burned in.</p>
+          <div class="ctas">
+            <a class="btn big" href="/app?signup=1" data-cta>Make memes free <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg></a>
+            <span class="fine"><b>5 free minutes</b> a month · no card</span>
           </div>
         </div>
-        <div class="row">
-          <button type="button" id="manage-billing" class="small" hidden>Manage billing</button>
-          <button type="button" id="cancel-btn" class="link" hidden>Cancel subscription</button>
-          <button type="button" id="resume-btn" class="small" hidden>Keep my subscription</button>
+
+        <div class="stage" aria-hidden="true">
+          <div class="phone p1"><div class="scr"><div class="blur ft ft-b"></div><div class="clip"><div class="ft ft-b"></div></div><p class="cap">me opening the group chat after 6 hours of silence</p><div class="ui"><i></i><i></i><i></i></div><div class="prog" style="animation-delay:-2s"></div></div></div>
+          <div class="phone p2"><div class="scr"><div class="blur ft ft-a"></div><div class="clip"><div class="ft ft-a"></div></div><p class="cap">POV: you said “quick question” at 4:58 on a Friday</p><div class="rec">REC</div><div class="ui"><i></i><i></i><i></i></div><div class="prog"></div></div></div>
+          <div class="phone p3"><div class="scr"><div class="blur ft ft-c"></div><div class="clip"><div class="ft ft-c"></div></div><p class="cap">when the recipe says “prep time: 5 minutes”</p><div class="ui"><i></i><i></i><i></i></div><div class="prog" style="animation-delay:-4s"></div></div></div>
+          <div class="sticker">no editing.<br>at all.</div>
+          <div class="sticker pink">9:16<br>ready</div>
         </div>
-        <p id="billing-error" class="error" role="alert"></p>
-      </section>
+      </div>
 
-      <section class="card">
-        <h2>1. Who is it for?</h2>
-        <select id="persona" aria-label="Audience"></select>
-      </section>
+      <div class="marquee" aria-hidden="true"><div class="row">
+        <span>No templates</span><span>No timeline</span><span>No editing skills</span><span>Captions burned in</span><span>9:16 ready</span><span>Post it now</span>
+        <span>No templates</span><span>No timeline</span><span>No editing skills</span><span>Captions burned in</span><span>9:16 ready</span><span>Post it now</span>
+      </div></div>
+      <div class="marquee pink" aria-hidden="true"><div class="row">
+        <span>Watches the whole video</span><span>Writes in your crowd's voice</span><span>Checks every pairing</span><span>Rate it and it learns</span>
+        <span>Watches the whole video</span><span>Writes in your crowd's voice</span><span>Checks every pairing</span><span>Rate it and it learns</span>
+      </div></div>
+    </section>
 
-      <section class="card">
-        <h2>2. Pick a video</h2>
-        <input id="file" type="file" accept="video/*" aria-label="Video file">
-        <div class="or">or use one you already uploaded</div>
-        <select id="previous" aria-label="Previous video"><option value="">None</option></select>
-        <button id="make" type="button">Make clips</button>
-        <progress id="upload-bar" max="100" value="0" hidden></progress>
-        <p id="make-error" class="error" role="alert"></p>
-      </section>
+    <section class="blk" id="how" aria-labelledby="how-h">
+      <div class="wrap">
+        <p class="kicker">How it works</p>
+        <h2 id="how-h">Three steps. <span class="tag pink">Zero</span> skill.</h2>
+        <div class="steps">
+          <div class="step"><div class="n">01</div><h3>Drop a video</h3><p>Podcast, stream VOD, interview, anything with faces and feelings. mp4, mov, webm or mkv.</p></div>
+          <div class="step"><div class="n">02</div><h3>Pick your people</h3><p>Choose who it's for, or describe your crowd in a few lines. The robot builds their whole vibe: slang, pet peeves, in-jokes.</p></div>
+          <div class="step"><div class="n">03</div><h3>Grab the goods</h3><p>Clips drop in as they finish. Vertical, captioned, audio levelled. Download one or the whole pile as a zip.</p></div>
+        </div>
+      </div>
+    </section>
 
-      <section id="run" class="card" hidden>
-        <h2 id="run-title">Working…</h2>
-        <ol id="steps"></ol>
-        <p id="run-status" class="muted" aria-live="polite"></p>
-        <div id="notes"></div>
-        <button id="retry" type="button" hidden>Try again</button>
-      </section>
+    <section class="blk" aria-labelledby="hood-h">
+      <div class="wrap">
+        <p class="kicker">Under the hood</p>
+        <h2 id="hood-h">It doesn't guess. <span class="tag cyan">It watches.</span></h2>
+        <p class="intro">A reaction meme works when the clip matches the feeling, not the topic. So every run goes through four passes.</p>
+        <div class="pipe">
+          <div><p class="kicker">Pass 01</p><h3>Watch</h3><p>A video model watches the entire thing and flags moments that show one clear, reusable feeling.</p></div>
+          <div><p class="kicker">Pass 02</p><h3>Write</h3><p>Your audience's profile writes three candidate captions per moment, pulled from real situations in their life.</p></div>
+          <div><p class="kicker">Pass 03</p><h3>Check</h3><p>The model re-watches each moment, trims it, and keeps the caption it lands best. Forced matches get dropped.</p></div>
+          <div><p class="kicker">Pass 04</p><h3>Render</h3><p>Cut on pauses, framed 9:16 over a blurred fill, caption burned in, audio levelled. 1080×1920.</p></div>
+        </div>
+      </div>
+    </section>
 
-      <section id="clips-wrap" hidden>
-        <h2 id="clips-title">Clips</h2>
-        <div id="clips" class="grid"></div>
-      </section>
+    <section class="blk" aria-labelledby="why-h">
+      <div class="wrap">
+        <p class="kicker">Why it slaps</p>
+        <h2 id="why-h">Built for people who <span class="tag">post</span></h2>
+        <div class="why">
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><h3>It actually watches</h3><p>Not a transcript skim. It reads faces, timing and tone, then picks moments with one clean feeling.</p></div>
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><h3>Talks like your crowd</h3><p>Truckers, nurses, gamers, your niche of one. Captions use their words, not generic "when you..." filler.</p></div>
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><h3>No forced matches</h3><p>Every pairing gets checked against the actual clip. If nothing fits, it gets cut instead of shipped.</p></div>
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><h3>Post-ready files</h3><p>9:16 at 1080×1920 with the caption in the picture. Straight to Reels, TikTok and Shorts.</p></div>
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 10v12M15 5.9 14 10h5.8a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.5 22H7V10l4-8a3 3 0 0 1 4 3.9z"/></svg><h3>Learns your humor</h3><p>Thumbs up the bangers, thumbs down the duds. Your ratings shape the next batch of captions.</p></div>
+          <div><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg><h3>API for automators</h3><p>Paid plans get API keys, signed clip links and webhooks. Wire it into your content machine.</p></div>
+        </div>
+      </div>
+    </section>
 
-      <details class="card" id="keys-card">
-        <summary><h2 style="display:inline">API keys</h2></summary>
-        <p id="keys-intro" class="muted">Let another app use your account through the API. A key is shown once, so copy it when it appears. See docs/api.md.</p>
-        <ul id="keys" class="recent"></ul>
-        <form id="key-form" class="keyform">
-          <input id="key-name" placeholder="Name (e.g. My app)" required>
-          <button type="submit">Create key</button>
-        </form>
-        <pre id="key-new" class="note" hidden></pre>
-        <p id="key-error" class="error" role="alert"></p>
-      </details>
+    <section class="blk" id="pricing" aria-labelledby="price-h">
+      <div class="wrap">
+        <p class="kicker">Pricing</p>
+        <h2 id="price-h">Cheap. Like your <span class="tag pink">humor.</span></h2>
+        <p class="intro">Minutes are the length of the videos you feed it, per month. Start free, upgrade when the memes start printing.</p>
+        <div class="period" role="group" aria-label="Billing period">
+          <button type="button" data-period="monthly" aria-pressed="true">Monthly</button>
+          <button type="button" data-period="annual" aria-pressed="false">Annual · save 15%</button>
+        </div>
+        <div class="prices" id="prices">
+          <noscript><p class="muted">Free: 5 minutes a month. Paid plans from $15 a month. Sign up to see them all.</p></noscript>
+        </div>
+        <p class="muted" id="price-more"></p>
+      </div>
+    </section>
 
-      <section class="card">
-        <h2>Recent runs</h2>
-        <ul id="recent" class="recent"></ul>
-      </section>
-    </div>
+    <section class="blk" aria-labelledby="faq-h">
+      <div class="wrap">
+        <p class="kicker">FAQ</p>
+        <h2 id="faq-h">Questions, <span class="tag cyan">answered</span></h2>
+        <div class="faq">
+          <details><summary>What kind of video works best?</summary><p>People talking and reacting: podcasts, interviews, streams, panels, reality TV you have the rights to. The more faces and feelings, the more memes. Silent videos work, but the clips will be silent too.</p></details>
+          <details><summary>How many memes do I get from one video?</summary><p>It depends on how many clean moments the video has. Every plan has a cap per run: 12 on Free, up to 60 on the bigger plans. Weak pairings are dropped, so you only get clips that actually land.</p></details>
+          <details><summary>Is there a watermark?</summary><p>Free and Starter clips carry a small "made with dankmemes" mark burned into the picture. Creator and up are clean.</p></details>
+          <details><summary>Who is it for?</summary><p>Anyone with an audience. Pick a built-in crowd or describe yours in a few lines ("ER nurses on night shift", "Warzone squad", "first-year teachers") and the captions get written in their voice.</p></details>
+          <details><summary>Can I upload anything?</summary><p>Only footage you have the rights to use. You keep what you make. See the <a href="/terms">Terms</a> and the <a href="/copyright">Copyright policy</a>.</p></details>
+          <details><summary>What happens to my videos?</summary><p>They're kept for your plan's retention period, then deleted. You can delete a run, download your data or delete your account whenever you like.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final" aria-labelledby="final-h">
+      <svg class="splat" style="left:6%;top:30px;width:150px" viewBox="0 0 200 200" aria-hidden="true"><g fill="#ff2e93"><circle cx="100" cy="100" r="46"/><circle cx="150" cy="70" r="16"/><circle cx="58" cy="52" r="12"/><circle cx="40" cy="128" r="18"/><circle cx="160" cy="140" r="10"/><circle cx="118" cy="168" r="14"/><rect x="92" y="130" width="10" height="64" rx="5"/><rect x="64" y="118" width="7" height="42" rx="3.5"/><circle cx="185" cy="105" r="5"/><circle cx="20" cy="88" r="6"/></g></svg>
+      <svg class="splat" style="right:5%;bottom:60px;width:120px" viewBox="0 0 200 200" aria-hidden="true"><g fill="#c6ff00"><circle cx="100" cy="100" r="40"/><circle cx="148" cy="62" r="14"/><circle cx="52" cy="60" r="10"/><circle cx="46" cy="140" r="15"/><circle cx="150" cy="146" r="12"/><rect x="104" y="128" width="9" height="56" rx="4.5"/><circle cx="20" cy="104" r="6"/><circle cx="182" cy="96" r="5"/></g></svg>
+      <div class="wrap">
+        <h2 id="final-h" class="display">Quit scrolling.<br><span class="tag">Start posting.</span></h2>
+        <p>Your next viral clip is sitting in a video you already have. Go dig it out.</p>
+        <a class="btn big pink" href="/app?signup=1" data-cta>Make memes free</a>
+      </div>
+    </section>
   </main>
-  <footer class="foot muted"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/copyright">Copyright</a></footer>
-  <script src="/app.js"></script>
+
+  <footer class="foot">
+    <div class="wrap">
+      <a class="logo" href="/" aria-label="dankmemes home"><span class="d">dank</span><span class="m">memes</span></a>
+      <nav aria-label="Legal"><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/refunds">Refunds</a><a href="/copyright">Copyright</a></nav>
+    </div>
+  </footer>
+  <script src="/landing.js" defer></script>
 </body>
 </html>

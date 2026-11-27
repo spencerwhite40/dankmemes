@@ -7,7 +7,7 @@
 // EMAIL_PROVIDER=resend|postmark|memory|none forces one. Keys are typed into the host's settings, never committed.
 const outbox = [];   // the "memory" provider's sent mail (tests read this)
 
-const appName = () => process.env.APP_NAME || "Meme Builder";
+const appName = () => process.env.APP_NAME || "dankmemes";
 function provider() {
   const forced = (process.env.EMAIL_PROVIDER || "").toLowerCase();
   if (["resend", "postmark", "memory", "none"].includes(forced)) return forced;

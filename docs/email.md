@@ -12,9 +12,9 @@ It needs an email provider. Resend and Postmark are supported; set one.
 
    ```
    RESEND_API_KEY=...                         # or POSTMARK_SERVER_TOKEN=...
-   EMAIL_FROM="Meme Builder <hello@your-domain.com>"   # an address on the verified domain
+   EMAIL_FROM="dankmemes <hello@your-domain.com>"   # an address on the verified domain
    APP_URL=https://your-app.example.com       # the links in emails point here
-   APP_NAME=Meme Builder                      # optional: the name used in emails
+   APP_NAME=dankmemes                        # optional: the name used in emails
    ```
 
 5. Redeploy, create an account with a real address you own, and check that the confirmation email arrives. Then try "Forgot your password?".
